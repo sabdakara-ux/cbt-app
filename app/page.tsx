@@ -7,15 +7,12 @@ import React, { useState, useEffect } from 'react';
 const IconBase = ({ children, size = 24, className = '', ...props }: any) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
 );
-const CheckSquare = (p: any) => <IconBase {...p}><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></IconBase>;
 const Clock = (p: any) => <IconBase {...p}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></IconBase>;
 const Save = (p: any) => <IconBase {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></IconBase>;
 const XCircle = (p: any) => <IconBase {...p}><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></IconBase>;
 const LayoutGrid = (p: any) => <IconBase {...p}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></IconBase>;
 const LogOut = (p: any) => <IconBase {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></IconBase>;
 const FileText = (p: any) => <IconBase {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></IconBase>;
-const Eye = (p: any) => <IconBase {...p}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></IconBase>;
-const EyeOff = (p: any) => <IconBase {...p}><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></IconBase>;
 const Users = (p: any) => <IconBase {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></IconBase>;
 const PlusCircle = (p: any) => <IconBase {...p}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></IconBase>;
 const Edit = (p: any) => <IconBase {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>;
@@ -29,42 +26,76 @@ const RefreshCw = (p: any) => <IconBase {...p}><polyline points="23 4 23 10 17 1
 const Briefcase = (p: any) => <IconBase {...p}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></IconBase>;
 
 // ==========================================
-// 1. INITIAL MOCK DATA (GLOBAL STATE)
+// 1. DATA TYPES & INITIAL PRODUCTION STATE
 // ==========================================
-const INITIAL_CLASSES = [
-  { id: 'c1', name: 'X IPA 1' },
-  { id: 'c2', name: 'X IPA 2' },
-];
+interface ClassItem {
+  id: string;
+  name: string;
+}
 
-const INITIAL_STUDENTS = [
-  { nis: '12345', name: 'Ahmad Budi Santoso', classId: 'c1', className: 'X IPA 1' },
-  { nis: '12346', name: 'Siti Aminah', classId: 'c1', className: 'X IPA 1' },
-  { nis: '12347', name: 'Bagus Wijaya', classId: 'c2', className: 'X IPA 2' },
-];
+interface StudentItem {
+  nis: string;
+  name: string;
+  classId: string;
+  className: string;
+}
 
-const INITIAL_SUBJECTS = [
-  { id: 's1', code: 'MTK', name: 'Matematika', grade_level: 'Kelas 10' },
-  { id: 's2', code: 'BING', name: 'Bahasa Inggris', grade_level: 'Kelas 10' },
-];
+interface SubjectItem {
+  id: string;
+  code: string;
+  name: string;
+  grade_level?: string;
+}
 
-const INITIAL_TEACHERS = [
-  { id: 't1', username: 'guru1', password: '123', name: 'Budi Santoso, S.Pd', subjectIds: ['s1'] },
-];
+interface TeacherItem {
+  id: string;
+  username: string;
+  password: string;
+  name: string;
+  subjectIds: string[];
+}
 
-const INITIAL_EXAMS = [
-  { id: 'e1', subjectId: 's1', title: 'Sumatif Akhir Semester Ganjil', duration_minutes: 90, token: 'MATH99', is_active: true, date: '2026-11-20' },
-];
+interface ExamItem {
+  id: string;
+  subjectId: string;
+  title: string;
+  duration_minutes: number;
+  token: string;
+  is_active: boolean;
+  date: string;
+}
 
-const INITIAL_QUESTIONS = [
-  { id: 'q1', examId: 'e1', question_type: 'multiple_choice', question_text: 'Berapa hasil dari 5 + 5?', payload: { options: ["5", "10", "15", "20", "25"] }, answer_key: { correct: "10" }, weight: 1, order_num: 1 },
-  { id: 'q2', examId: 'e1', question_type: 'essay', question_text: 'Jelaskan konsep dasar teorema Pythagoras.', payload: { rubric: "Menyebutkan sisi miring dan kuadrat sisi siku-siku." }, answer_key: {}, weight: 5, order_num: 2 }
-];
+interface QuestionItem {
+  id: string;
+  examId: string;
+  question_type: string;
+  question_text: string;
+  payload: any;
+  answer_key: any;
+  weight: number;
+  order_num: number;
+}
 
-const INITIAL_SESSIONS = [
-  { id: 'sess_1', examId: 'e1', nis: '12347', name: 'Bagus Wijaya', className: 'X IPA 2', status: 'completed', score: 80, answers: {} }
-];
+interface ExamSessionItem {
+  id: string;
+  examId: string;
+  nis: string;
+  name: string;
+  className: string;
+  status: string;
+  score: number;
+  answers: Record<string, any>;
+}
 
-// Helper: Seeded Random
+const INITIAL_CLASSES: ClassItem[] = [];
+const INITIAL_STUDENTS: StudentItem[] = [];
+const INITIAL_SUBJECTS: SubjectItem[] = [];
+const INITIAL_TEACHERS: TeacherItem[] = [];
+const INITIAL_EXAMS: ExamItem[] = [];
+const INITIAL_QUESTIONS: QuestionItem[] = [];
+const INITIAL_SESSIONS: ExamSessionItem[] = [];
+
+// Helper: Seeded Random untuk pengacakan soal konsisten per siswa
 const seededRandom = (seed: number) => {
   let t = seed += 0x6D2B79F5;
   t = Math.imul(t ^ t >>> 15, t | 1);
@@ -94,14 +125,14 @@ export default function CBTApp() {
   const [session, setSession] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Global States (Simulating DB)
-  const [teachers, setTeachers] = useState(INITIAL_TEACHERS);
-  const [classes, setClasses] = useState(INITIAL_CLASSES);
-  const [students, setStudents] = useState(INITIAL_STUDENTS);
-  const [subjects, setSubjects] = useState(INITIAL_SUBJECTS);
-  const [exams, setExams] = useState(INITIAL_EXAMS);
-  const [questions, setQuestions] = useState(INITIAL_QUESTIONS);
-  const [examSessions, setExamSessions] = useState<any[]>(INITIAL_SESSIONS);
+  // Global States (Siap diisi data produksi dari Dashboard Admin/Guru)
+  const [teachers, setTeachers] = useState<TeacherItem[]>(INITIAL_TEACHERS);
+  const [classes, setClasses] = useState<ClassItem[]>(INITIAL_CLASSES);
+  const [students, setStudents] = useState<StudentItem[]>(INITIAL_STUDENTS);
+  const [subjects, setSubjects] = useState<SubjectItem[]>(INITIAL_SUBJECTS);
+  const [exams, setExams] = useState<ExamItem[]>(INITIAL_EXAMS);
+  const [questions, setQuestions] = useState<QuestionItem[]>(INITIAL_QUESTIONS);
+  const [examSessions, setExamSessions] = useState<ExamSessionItem[]>(INITIAL_SESSIONS);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 selection:bg-indigo-100 selection:text-indigo-900">
@@ -156,7 +187,7 @@ export default function CBTApp() {
 }
 
 // ==========================================
-// LOGIN VIEW (DYNAMIC STUDENT/ADMIN)
+// LOGIN VIEW (DYNAMIC STUDENT / TEACHER / ADMIN)
 // ==========================================
 function LoginView({ exams, subjects, students, teachers, examSessions, onStudentLogin, onAdminLogin, onTeacherLogin }: any) {
   const [loginType, setLoginType] = useState<'student' | 'teacher' | 'admin'>('student');
@@ -166,7 +197,7 @@ function LoginView({ exams, subjects, students, teachers, examSessions, onStuden
   const [name, setName] = useState('');
   const [token, setToken] = useState('');
   
-  // Admin Form
+  // Admin / Teacher Form
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -217,7 +248,7 @@ function LoginView({ exams, subjects, students, teachers, examSessions, onStuden
             name,
             className: studentData ? studentData.className : 'Umum',
             examTitle: foundExam.title,
-            subjectName: subject?.name || 'Unknown',
+            subjectName: subject?.name || 'Mata Pelajaran',
             duration: foundExam.duration_minutes
           });
         }
@@ -246,12 +277,10 @@ function LoginView({ exams, subjects, students, teachers, examSessions, onStuden
             </div>
             
             <div className="relative z-10 bg-white/10 p-4 rounded-xl border border-white/20 mt-8 backdrop-blur-sm">
-              <p className="text-sm font-medium mb-1 text-indigo-100">Contoh Token Ujian Aktif:</p>
-              <div className="flex gap-2">
-                {exams.filter((e:any)=>e.is_active).map((e:any) => (
-                  <span key={e.id} className="bg-white/20 px-2 py-1 rounded font-mono font-bold text-sm tracking-widest">{e.token}</span>
-                ))}
-              </div>
+              <p className="text-sm font-bold mb-1 text-white">Tata Tertib Peserta Ujian:</p>
+              <p className="text-xs text-indigo-100 leading-relaxed">
+                Gunakan token resmi dari pengawas ruangan. Dilarang berpindah tab atau membuka aplikasi lain selama ujian berlangsung.
+              </p>
             </div>
             
             {/* Background pattern */}
@@ -308,7 +337,7 @@ function LoginView({ exams, subjects, students, teachers, examSessions, onStuden
                     <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Username {loginType === 'admin' ? 'Admin' : 'Guru'}</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><UserIcon size={18} className="text-slate-400"/></div>
-                      <input required type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={username} onChange={e => setUsername(e.target.value)} placeholder={loginType === 'admin' ? "admin" : "Masukkan username guru"} />
+                      <input required type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={username} onChange={e => setUsername(e.target.value)} placeholder={loginType === 'admin' ? "Username admin" : "Username guru"} />
                     </div>
                   </div>
                   <div>
@@ -345,7 +374,7 @@ function ExamView({ session, allQuestions, onFinish }: any) {
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // Tambahan state untuk custom modal dialog
+  // Custom modal dialog state
   const [confirmModal, setConfirmModal] = useState(false);
   const [alertModal, setAlertModal] = useState<{title: string, message: string, onClose?: () => void} | null>(null);
 
@@ -370,7 +399,7 @@ function ExamView({ session, allQuestions, onFinish }: any) {
           setAlertModal({
             title: "Ujian Terkunci",
             message: "Ujian Anda dikunci karena terlalu banyak pelanggaran (pindah tab). Ujian akan diselesaikan secara otomatis.",
-            onClose: () => submitExam(true) // Silent submit
+            onClose: () => submitExam(true)
           });
         } else {
           setAlertModal({
@@ -420,15 +449,16 @@ function ExamView({ session, allQuestions, onFinish }: any) {
     setSyncStatus('Menyimpan...');
     localStorage.removeItem(`cbt_ans_${session.sessionId}`);
     
-    // Auto Scoring Mock (Penghitungan Nilai PG Otomatis)
+    // Penghitungan Nilai PG Otomatis
     let score = 0;
-    const pgQuestions = questions.filter(q => q.question_type === 'multiple_choice');
+    const examQuestionsWithKeys = allQuestions.filter((q: any) => q.examId === session.examId);
+    const pgQuestions = examQuestionsWithKeys.filter((q: any) => q.question_type === 'multiple_choice');
     if (pgQuestions.length > 0) {
-        let correct = 0;
-        pgQuestions.forEach(q => {
-            if (answers[q.id] === q.answer_key?.correct) correct++;
-        });
-        score = Math.round((correct / pgQuestions.length) * 100);
+      let correct = 0;
+      pgQuestions.forEach((q: any) => {
+        if (answers[q.id] === q.answer_key?.correct) correct++;
+      });
+      score = Math.round((correct / pgQuestions.length) * 100);
     }
 
     setTimeout(() => {
@@ -516,7 +546,6 @@ function ExamView({ session, allQuestions, onFinish }: any) {
                     ))}
                   </div>
                 )}
-                {/* Simplify other types for brevity, similar to original but with rounded-2xl and indigo colors */}
                 {currentQ.question_type === 'essay' && (
                   <div>
                     <textarea 
@@ -608,7 +637,7 @@ function Modal({ title, isOpen, onClose, children }: any) {
 }
 
 // ==========================================
-// ADMIN DASHBOARD
+// ADMIN & TEACHER DASHBOARD
 // ==========================================
 function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasses, students, setStudents, subjects, setSubjects, exams, setExams, questions, setQuestions, examSessions, setExamSessions, onBack }: any) {
   const [activeTab, setActiveTab] = useState<'exams'|'questions'|'students'|'classes'|'teachers'|'monitoring'|'rekap'>('monitoring');
@@ -709,7 +738,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                 return (
                   <div key={ex.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:shadow-md transition">
                     <div>
-                      <span className="text-xs font-bold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg uppercase mb-2 inline-block">{sub?.name || 'Unknown'}</span>
+                      <span className="text-xs font-bold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg uppercase mb-2 inline-block">{sub?.name || 'Mata Pelajaran'}</span>
                       <h3 className="font-extrabold text-xl text-slate-800">{ex.title}</h3>
                       <p className="text-slate-500 font-medium mt-1">Jadwal: <strong className="text-slate-700">{ex.date ? new Date(ex.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Belum diatur'}</strong> • Token: <strong className="font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{ex.token}</strong> • {ex.duration_minutes} Menit</p>
                     </div>
@@ -749,15 +778,16 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                 <span className="font-bold text-slate-700">Daftar Soal</span>
-                <button onClick={() => setAdminAlert('Simulasi Preview: Fitur Import MS Word (docx) & Tambah Manual membutuhkan instalasi library eksternal (mammoth & docx). Fitur ini dinonaktifkan di mode ini.')} className="text-sm px-4 py-2 bg-indigo-100 text-indigo-700 font-bold rounded-lg hover:bg-indigo-200 transition">Tambah Soal</button>
+                <button onClick={() => setAdminAlert('Fitur Import MS Word (docx) & Tambah Manual membutuhkan konfigurasi library parser (mammoth & docx) di server.')} className="text-sm px-4 py-2 bg-indigo-100 text-indigo-700 font-bold rounded-lg hover:bg-indigo-200 transition">Tambah Soal</button>
               </div>
               <table className="w-full text-left text-sm text-slate-600">
                 <thead className="bg-white border-b border-slate-100">
                   <tr><th className="px-6 py-4 font-bold w-12">No</th><th className="px-6 py-4 font-bold">Pertanyaan</th><th className="px-6 py-4 font-bold">Tipe</th><th className="px-6 py-4 font-bold text-center">Aksi</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {/* Simulate filtering questions by subject (for demo, just show all if MTK is selected, else none to show it 'works' visually) */}
-                  {questions.map((q:any, idx:number) => (
+                  {questions.length === 0 ? (
+                    <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 font-medium">Belum ada soal yang ditambahkan.</td></tr>
+                  ) : questions.map((q:any, idx:number) => (
                     <tr key={q.id} className="hover:bg-slate-50 transition">
                       <td className="px-6 py-4 font-semibold">{idx + 1}</td>
                       <td className="px-6 py-4"><div className="line-clamp-2 font-medium text-slate-800">{q.question_text}</div></td>
@@ -798,7 +828,9 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                   <tr><th className="px-6 py-4 font-bold">NIS</th><th className="px-6 py-4 font-bold">Nama Lengkap</th><th className="px-6 py-4 font-bold">Kelas</th><th className="px-6 py-4 font-bold text-center">Aksi</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {students.filter((s:any) => selectedClassFilter === 'ALL' || s.classId === selectedClassFilter).map((s:any) => (
+                  {students.filter((s:any) => selectedClassFilter === 'ALL' || s.classId === selectedClassFilter).length === 0 ? (
+                    <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 font-medium">Belum ada data siswa terdaftar.</td></tr>
+                  ) : students.filter((s:any) => selectedClassFilter === 'ALL' || s.classId === selectedClassFilter).map((s:any) => (
                     <tr key={s.nis} className="hover:bg-slate-50 transition">
                       <td className="px-6 py-4 font-mono font-bold text-slate-800">{s.nis}</td>
                       <td className="px-6 py-4 font-bold text-slate-800">{s.name}</td>
@@ -833,7 +865,9 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                   <tr><th className="px-6 py-4 font-bold">Nama Kelas</th><th className="px-6 py-4 font-bold text-center">Jumlah Siswa</th><th className="px-6 py-4 font-bold text-center">Aksi</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {classes.map((c:any) => {
+                  {classes.length === 0 ? (
+                    <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-500 font-medium">Belum ada data kelas terdaftar.</td></tr>
+                  ) : classes.map((c:any) => {
                     const count = students.filter((s:any) => s.classId === c.id).length;
                     return (
                       <tr key={c.id} className="hover:bg-slate-50 transition">
@@ -871,7 +905,9 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                   <tr><th className="px-6 py-4 font-bold">Nama Guru</th><th className="px-6 py-4 font-bold">Username</th><th className="px-6 py-4 font-bold">Mapel yang Diampu</th><th className="px-6 py-4 font-bold text-center">Aksi</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {teachers.map((t:any) => (
+                  {teachers.length === 0 ? (
+                    <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 font-medium">Belum ada akun guru terdaftar.</td></tr>
+                  ) : teachers.map((t:any) => (
                     <tr key={t.id} className="hover:bg-slate-50 transition">
                       <td className="px-6 py-4 font-bold text-slate-800">{t.name}</td>
                       <td className="px-6 py-4 font-mono font-medium">{t.username}</td>
@@ -879,7 +915,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                         <div className="flex flex-wrap gap-1">
                           {t.subjectIds.map((sid:string) => {
                             const mapel = subjects.find((s:any)=>s.id===sid);
-                            return <span key={sid} className="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded-md text-xs font-bold">{mapel?.name || 'Unknown'}</span>
+                            return <span key={sid} className="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded-md text-xs font-bold">{mapel?.name || 'Mata Pelajaran'}</span>
                           })}
                           {t.subjectIds.length === 0 && <span className="text-slate-400 italic text-xs">Belum ada mapel</span>}
                         </div>
@@ -924,7 +960,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                           <div className="font-bold text-slate-800">{sess.name}</div>
                           <div className="text-xs text-slate-500">{sess.nis} • Kelas: {sess.className}</div>
                         </td>
-                        <td className="px-6 py-4 font-bold text-slate-700">{ex?.title || 'Unknown Exam'}</td>
+                        <td className="px-6 py-4 font-bold text-slate-700">{ex?.title || 'Paket Ujian'}</td>
                         <td className="px-6 py-4 text-center">
                           <span className={`px-3 py-1 rounded-lg font-bold text-xs uppercase ${sess.status==='completed'?'bg-emerald-100 text-emerald-700':sess.status==='locked'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}`}>
                             {sess.status}
@@ -983,7 +1019,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                     const avgScore = completed.length > 0 ? (completed.reduce((acc:number, val:any) => acc + (val.score||0), 0) / completed.length).toFixed(1) : 0;
                     return (
                       <div key={ex.id} className="border border-slate-200 rounded-2xl p-5 hover:shadow-md transition bg-slate-50">
-                        <div className="text-xs font-bold text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full inline-block mb-3 uppercase tracking-wider">{sub?.name || 'Unknown'}</div>
+                        <div className="text-xs font-bold text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full inline-block mb-3 uppercase tracking-wider">{sub?.name || 'Mata Pelajaran'}</div>
                         <h3 className="font-extrabold text-lg text-slate-800 mb-4">{ex.title}</h3>
                         <div className="flex justify-between items-center mb-2">
                            <span className="text-sm font-medium text-slate-500">Siswa Selesai:</span>
@@ -1005,22 +1041,24 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
         {/* MODALS */}
         <Modal title={`${classForm.id ? 'Edit' : 'Tambah'} Kelas`} isOpen={isClassModalOpen} onClose={() => setClassModalOpen(false)}>
           <form onSubmit={saveClass} className="space-y-4">
-            <div><label className="block text-xs font-bold text-slate-700 mb-1">Nama Kelas</label><input required autoFocus className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none" value={classForm.name} onChange={e=>setClassForm({...classForm, name: e.target.value})} placeholder="Contoh: X IPA 1"/></div>
+            <div><label className="block text-xs font-bold text-slate-700 mb-1">Nama Kelas</label><input required autoFocus className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none" value={classForm.name} onChange={e=>setClassForm({...classForm, name: e.target.value})} placeholder="Nama Kelas"/></div>
             <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700">Simpan Kelas</button>
           </form>
         </Modal>
 
         <Modal title={`${teacherForm.id ? 'Edit' : 'Tambah'} Guru`} isOpen={isTeacherModalOpen} onClose={() => setTeacherModalOpen(false)}>
           <form onSubmit={saveTeacher} className="space-y-4">
-            <div><label className="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap & Gelar</label><input required autoFocus className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" value={teacherForm.name} onChange={e=>setTeacherForm({...teacherForm, name: e.target.value})} placeholder="Contoh: Budi Santoso, S.Pd"/></div>
+            <div><label className="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap & Gelar</label><input required autoFocus className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" value={teacherForm.name} onChange={e=>setTeacherForm({...teacherForm, name: e.target.value})} placeholder="Nama Guru"/></div>
             <div className="flex gap-4">
-              <div className="flex-1"><label className="block text-xs font-bold text-slate-700 mb-1">Username</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" value={teacherForm.username} onChange={e=>setTeacherForm({...teacherForm, username: e.target.value})} placeholder="guru1"/></div>
-              <div className="flex-1"><label className="block text-xs font-bold text-slate-700 mb-1">Password</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" value={teacherForm.password} onChange={e=>setTeacherForm({...teacherForm, password: e.target.value})} placeholder="12345"/></div>
+              <div className="flex-1"><label className="block text-xs font-bold text-slate-700 mb-1">Username</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" value={teacherForm.username} onChange={e=>setTeacherForm({...teacherForm, username: e.target.value})} placeholder="Username"/></div>
+              <div className="flex-1"><label className="block text-xs font-bold text-slate-700 mb-1">Password</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none" value={teacherForm.password} onChange={e=>setTeacherForm({...teacherForm, password: e.target.value})} placeholder="Password"/></div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-2">Pilih Mapel yang Diampu</label>
               <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
-                {subjects.map((s:any) => (
+                {subjects.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">Tambahkan mata pelajaran terlebih dahulu di menu Bank Soal.</p>
+                ) : subjects.map((s:any) => (
                   <label key={s.id} className="flex items-center gap-3 cursor-pointer p-1">
                     <input type="checkbox" className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" 
                       checked={teacherForm.subjectIds.includes(s.id)}
@@ -1055,8 +1093,8 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
 
         <Modal title={`${subjectForm.id ? 'Edit' : 'Tambah'} Mata Pelajaran`} isOpen={isSubjectModalOpen} onClose={() => setSubjectModalOpen(false)}>
           <form onSubmit={saveSubject} className="space-y-4">
-            <div><label className="block text-xs font-bold text-slate-700 mb-1">Kode Mapel</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={subjectForm.code} onChange={e=>setSubjectForm({...subjectForm, code: e.target.value.toUpperCase()})} placeholder="Contoh: FIS"/></div>
-            <div><label className="block text-xs font-bold text-slate-700 mb-1">Nama Mapel</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={subjectForm.name} onChange={e=>setSubjectForm({...subjectForm, name: e.target.value})} placeholder="Contoh: Fisika Dasar"/></div>
+            <div><label className="block text-xs font-bold text-slate-700 mb-1">Kode Mapel</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={subjectForm.code} onChange={e=>setSubjectForm({...subjectForm, code: e.target.value.toUpperCase()})} placeholder="Kode Mapel"/></div>
+            <div><label className="block text-xs font-bold text-slate-700 mb-1">Nama Mapel</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={subjectForm.name} onChange={e=>setSubjectForm({...subjectForm, name: e.target.value})} placeholder="Nama Mata Pelajaran"/></div>
             <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700">Simpan Mapel</button>
           </form>
         </Modal>
@@ -1070,10 +1108,10 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                 {visibleSubjects.map((s:any) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
-            <div><label className="block text-xs font-bold text-slate-700 mb-1">Judul Ujian</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={examForm.title} onChange={e=>setExamForm({...examForm, title: e.target.value})} placeholder="Contoh: UTS Ganjil"/></div>
+            <div><label className="block text-xs font-bold text-slate-700 mb-1">Judul Ujian</label><input required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={examForm.title} onChange={e=>setExamForm({...examForm, title: e.target.value})} placeholder="Judul Ujian"/></div>
             <div><label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Jadwal Ujian</label><input required type="date" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={examForm.date} onChange={e=>setExamForm({...examForm, date: e.target.value})} /></div>
             <div className="flex gap-4">
-              <div className="flex-1"><label className="block text-xs font-bold text-slate-700 mb-1">Token (6 Karakter)</label><input required maxLength={6} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase outline-none" value={examForm.token} onChange={e=>setExamForm({...examForm, token: e.target.value.toUpperCase()})} placeholder="X1Y2Z3"/></div>
+              <div className="flex-1"><label className="block text-xs font-bold text-slate-700 mb-1">Token (6 Karakter)</label><input required maxLength={6} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase outline-none" value={examForm.token} onChange={e=>setExamForm({...examForm, token: e.target.value.toUpperCase()})} placeholder="TOKEN"/></div>
               <div className="flex-1"><label className="block text-xs font-bold text-slate-700 mb-1">Durasi (Menit)</label><input required type="number" min={1} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={examForm.duration} onChange={e=>setExamForm({...examForm, duration: Number(e.target.value)})}/></div>
             </div>
             <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 mt-2">Simpan Ujian</button>
