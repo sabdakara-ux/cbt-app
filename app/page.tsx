@@ -57,10 +57,7 @@ const INITIAL_EXAMS = [
 
 const INITIAL_QUESTIONS = [
   { id: 'q1', examId: 'e1', question_type: 'multiple_choice', question_text: 'Berapa hasil dari 5 + 5?', payload: { options: ["5", "10", "15", "20", "25"] }, answer_key: { correct: "10" }, weight: 1, order_num: 1 },
-  { id: 'q3', examId: 'e1', question_type: 'complex_mc', question_text: 'Pilih semua bilangan genap dari pilihan di bawah ini:', payload: { options: ["1", "2", "3", "4", "5"] }, answer_key: { correct: ["2", "4"] }, weight: 2, order_num: 2 },
-  { id: 'q4', examId: 'e1', question_type: 'matching', question_text: 'Pasangkan negara dengan ibu kotanya.', payload: { left: ["Indonesia", "Jepang", "Korea Selatan"], right: ["Tokyo", "Jakarta", "Seoul"] }, answer_key: { matches: {"Indonesia": "Jakarta", "Jepang": "Tokyo", "Korea Selatan": "Seoul"} }, weight: 3, order_num: 3 },
-  { id: 'q5', examId: 'e1', question_type: 'short_answer', question_text: 'Bentuk bangun datar yang memiliki 3 sisi disebut?', payload: {}, answer_key: { answers: ["segitiga", "segi tiga"] }, weight: 2, order_num: 4 },
-  { id: 'q2', examId: 'e1', question_type: 'essay', question_text: 'Jelaskan konsep dasar teorema Pythagoras.', payload: { rubric: "Menyebutkan sisi miring dan kuadrat sisi siku-siku." }, answer_key: {}, weight: 5, order_num: 5 }
+  { id: 'q2', examId: 'e1', question_type: 'essay', question_text: 'Jelaskan konsep dasar teorema Pythagoras.', payload: { rubric: "Menyebutkan sisi miring dan kuadrat sisi siku-siku." }, answer_key: {}, weight: 5, order_num: 2 }
 ];
 
 const INITIAL_SESSIONS = [
@@ -108,6 +105,7 @@ export default function CBTApp() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 selection:bg-indigo-100 selection:text-indigo-900">
+      
       {view === 'login' && (
         <LoginView 
           exams={exams} 
@@ -229,7 +227,7 @@ function LoginView({ exams, subjects, students, teachers, examSessions, onStuden
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-36px)] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-blue-50 relative overflow-hidden">
+    <div className="flex min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-blue-50 relative overflow-hidden">
       {/* Decorative Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
       <div className="absolute top-[20%] right-[-10%] w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
@@ -422,39 +420,16 @@ function ExamView({ session, allQuestions, onFinish }: any) {
     setSyncStatus('Menyimpan...');
     localStorage.removeItem(`cbt_ans_${session.sessionId}`);
     
-    // Auto Scoring Mock (Penghitungan Nilai Otomatis)
+    // Auto Scoring Mock (Penghitungan Nilai PG Otomatis)
     let score = 0;
-    let totalWeight = 0;
-    let earnedWeight = 0;
-
-    questions.forEach(q => {
-      if (q.question_type !== 'essay') {
-        totalWeight += q.weight || 1;
-        if (q.question_type === 'multiple_choice') {
-          if (answers[q.id] === q.answer_key?.correct) earnedWeight += (q.weight || 1);
-        } else if (q.question_type === 'complex_mc') {
-          const ansArr = answers[q.id] || [];
-          const corrArr = q.answer_key?.correct || [];
-          if (ansArr.length > 0 && ansArr.length === corrArr.length && ansArr.every((v:string) => corrArr.includes(v))) {
-            earnedWeight += (q.weight || 1);
-          }
-        } else if (q.question_type === 'matching') {
-          const ansMap = answers[q.id] || {};
-          const corrMap = q.answer_key?.matches || {};
-          let correctPairs = 0;
-          const totalPairs = Object.keys(corrMap).length;
-          Object.keys(corrMap).forEach(k => {
-            if (ansMap[k] === corrMap[k]) correctPairs++;
-          });
-          if (totalPairs > 0) earnedWeight += (correctPairs / totalPairs) * (q.weight || 1);
-        } else if (q.question_type === 'short_answer') {
-          const ans = (answers[q.id] || '').trim().toLowerCase();
-          const corrArr = (q.answer_key?.answers || []).map((a:string) => a.trim().toLowerCase());
-          if (corrArr.includes(ans)) earnedWeight += (q.weight || 1);
-        }
-      }
-    });
-    if (totalWeight > 0) score = Math.round((earnedWeight / totalWeight) * 100);
+    const pgQuestions = questions.filter(q => q.question_type === 'multiple_choice');
+    if (pgQuestions.length > 0) {
+        let correct = 0;
+        pgQuestions.forEach(q => {
+            if (answers[q.id] === q.answer_key?.correct) correct++;
+        });
+        score = Math.round((correct / pgQuestions.length) * 100);
+    }
 
     setTimeout(() => {
       if (!silent) {
@@ -492,7 +467,7 @@ function ExamView({ session, allQuestions, onFinish }: any) {
   const currentQ = questions[currentIndex];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-36px)] select-none bg-slate-100">
+    <div className="flex flex-col h-screen select-none bg-slate-100">
       <header className="bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20 shadow-sm">
         <div>
           <h1 className="font-extrabold text-lg text-slate-800">{session.examTitle}</h1>
@@ -541,64 +516,6 @@ function ExamView({ session, allQuestions, onFinish }: any) {
                     ))}
                   </div>
                 )}
-                
-                {currentQ.question_type === 'complex_mc' && (
-                  <div className="space-y-3">
-                    {currentQ.payload.options.map((opt: string, i: number) => {
-                      const checkedList = answers[currentQ.id] || [];
-                      const isChecked = checkedList.includes(opt);
-                      return (
-                        <label key={i} className={`flex items-center p-4 border-2 rounded-2xl cursor-pointer transition-all ${isChecked ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}>
-                          <input type="checkbox" checked={isChecked} onChange={(e) => {
-                            let newList = [...checkedList];
-                            if (e.target.checked) newList.push(opt);
-                            else newList = newList.filter((x:string) => x !== opt);
-                            handleAnswerChange(currentQ.id, newList);
-                          }} className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" />
-                          <span className="ml-4 text-slate-700 font-medium text-lg">{opt}</span>
-                        </label>
-                      );
-                    })}
-                    <p className="text-sm font-bold text-slate-400 mt-2">* Anda dapat memilih lebih dari satu jawaban.</p>
-                  </div>
-                )}
-
-                {currentQ.question_type === 'matching' && (
-                  <div className="space-y-4">
-                     {currentQ.payload.left.map((leftItem: string, i: number) => (
-                        <div key={i} className="flex flex-col md:flex-row md:items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                          <div className="md:w-1/2 font-bold text-slate-700 text-lg">{leftItem}</div>
-                          <div className="md:w-1/2 flex items-center gap-3">
-                            <span className="font-bold text-slate-400">=</span>
-                            <select
-                              className="w-full p-4 border-2 border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 font-medium text-slate-700 bg-white shadow-sm transition"
-                              value={(answers[currentQ.id] || {})[leftItem] || ''}
-                              onChange={(e) => {
-                                 const currentAns = answers[currentQ.id] || {};
-                                 handleAnswerChange(currentQ.id, { ...currentAns, [leftItem]: e.target.value });
-                              }}
-                            >
-                              <option value="" disabled>-- Pilih Pasangan --</option>
-                              {/* Pada implementasi nyata, opsi ini diacak agar tidak membocorkan urutan. Di sini dirender dari right (opsi). */}
-                              {currentQ.payload.right.map((rightItem: string, j: number) => (
-                                 <option key={j} value={rightItem}>{rightItem}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                     ))}
-                  </div>
-                )}
-
-                {currentQ.question_type === 'short_answer' && (
-                  <div>
-                    <input type="text" placeholder="Ketik jawaban singkat Anda..."
-                      className="w-full p-5 border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 text-lg font-bold text-slate-700 outline-none transition shadow-sm"
-                      value={answers[currentQ.id] || ''} onChange={(e) => handleAnswerChange(currentQ.id, e.target.value)}
-                    />
-                  </div>
-                )}
-
                 {/* Simplify other types for brevity, similar to original but with rounded-2xl and indigo colors */}
                 {currentQ.question_type === 'essay' && (
                   <div>
@@ -710,7 +627,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
   const [subjectForm, setSubjectForm] = useState({ id: '', code: '', name: '', grade: '' });
   const [teacherForm, setTeacherForm] = useState({ id: '', username: '', password: '', name: '', subjectIds: [] as string[] });
   const [examForm, setExamForm] = useState({ id: '', title: '', subjectId: '', token: '', duration: 90, date: '' });
-  const [questionForm, setQuestionForm] = useState<any>({ id: '', examId: '', question_type: 'multiple_choice', question_text: '', payload: { options: ['','','',''] }, answer_key: { correct: '' }, weight: 1 });
+  const [questionForm, setQuestionForm] = useState({ id: '', question_text: '' });
   
   // Filter for teacher subjects
   const visibleSubjects = currentUser.role === 'teacher' ? subjects.filter((s:any) => currentUser.subjectIds.includes(s.id)) : subjects;
@@ -728,16 +645,10 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
   // Actions
   const saveClass = (e: any) => { e.preventDefault(); if (classForm.id) setClasses(classes.map((c:any) => c.id === classForm.id ? { ...c, name: classForm.name } : c)); else setClasses([...classes, { id: 'c'+Date.now(), name: classForm.name }]); setClassModalOpen(false); };
   const saveStudent = (e: any) => { e.preventDefault(); const c = classes.find((c:any)=>c.id===studentForm.classId); if (studentForm.oldNis) setStudents(students.map((s:any) => s.nis === studentForm.oldNis ? { ...s, nis: studentForm.nis, name: studentForm.name, classId: studentForm.classId, className: c?.name || '' } : s)); else setStudents([...students, { nis: studentForm.nis, name: studentForm.name, classId: studentForm.classId, className: c?.name || '' }]); setStudentModalOpen(false); };
-  const saveTeacher = (e: any) => { e.preventDefault(); if (teacherForm.id) setTeachers(teachers.map((t:any) => t.id === teacherForm.id ? { ...t, ...teacherForm } : t)); else setTeachers([...teachers, { id: 't'+Date.now(), ...teacherForm }]); setTeacherModalOpen(false); };
+  const saveTeacher = (e: any) => { e.preventDefault(); if (teacherForm.id) setTeachers(teachers.map((t:any) => t.id === teacherForm.id ? { ...t, ...teacherForm } : t)); else setTeachers([...teachers, { ...teacherForm, id: 't'+Date.now() }]); setTeacherModalOpen(false); };
   const saveSubject = (e: any) => { e.preventDefault(); const payload = { code: subjectForm.code, name: subjectForm.name, grade_level: subjectForm.grade }; if (subjectForm.id) setSubjects(subjects.map((s:any) => s.id === subjectForm.id ? { ...s, ...payload } : s)); else { const id = 's'+Date.now(); setSubjects([...subjects, { id, ...payload }]); setSelectedSubjectId(id); } setSubjectModalOpen(false); };
-  const saveExam = (e: any) => { e.preventDefault(); if (examForm.id) setExams(exams.map((ex:any) => ex.id === examForm.id ? { ...ex, ...examForm, duration_minutes: examForm.duration } : ex)); else setExams([...exams, { id: 'e'+Date.now(), ...examForm, is_active: true, duration_minutes: examForm.duration }]); setExamModalOpen(false); };
-  const saveQuestion = (e: any) => { 
-    e.preventDefault(); 
-    if (!questionForm.examId) { setAdminAlert('Pilih Paket Ujian (Filter Mapel) terlebih dahulu.'); return; }
-    if (questionForm.id) setQuestions(questions.map((q:any) => q.id === questionForm.id ? { ...questionForm } : q)); 
-    else setQuestions([...questions, { ...questionForm, id: 'q'+Date.now() }]);
-    setQuestionModalOpen(false); 
-  };
+  const saveExam = (e: any) => { e.preventDefault(); if (examForm.id) setExams(exams.map((ex:any) => ex.id === examForm.id ? { ...ex, ...examForm, duration_minutes: examForm.duration } : ex)); else setExams([...exams, { ...examForm, id: 'e'+Date.now(), is_active: true, duration_minutes: examForm.duration }]); setExamModalOpen(false); };
+  const saveQuestion = (e: any) => { e.preventDefault(); if (questionForm.id) setQuestions(questions.map((q:any) => q.id === questionForm.id ? { ...q, question_text: questionForm.question_text } : q)); setQuestionModalOpen(false); };
 
   const deleteItem = (setter: any, items: any[], idKey: string, idVal: string) => {
     setAdminConfirm({
@@ -747,7 +658,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
   };
 
   return (
-    <div className="flex h-[calc(100vh-36px)] bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
       
       {/* Sidebar Dark Mode */}
       <aside className="w-64 bg-slate-900 text-slate-300 hidden md:flex flex-col z-20 shadow-xl">
@@ -838,10 +749,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                 <span className="font-bold text-slate-700">Daftar Soal</span>
-                <button onClick={() => {
-                  setQuestionForm({ id: '', examId: visibleExams.find((e:any)=>e.subjectId === selectedSubjectId)?.id || visibleExams[0]?.id || '', question_type: 'multiple_choice', question_text: '', payload: { options: ['','','',''] }, answer_key: { correct: '' }, weight: 1 });
-                  setQuestionModalOpen(true);
-                }} className="text-sm px-4 py-2 bg-indigo-100 text-indigo-700 font-bold rounded-lg hover:bg-indigo-200 transition">Tambah Soal</button>
+                <button onClick={() => setAdminAlert('Simulasi Preview: Fitur Import MS Word (docx) & Tambah Manual membutuhkan instalasi library eksternal (mammoth & docx). Fitur ini dinonaktifkan di mode ini.')} className="text-sm px-4 py-2 bg-indigo-100 text-indigo-700 font-bold rounded-lg hover:bg-indigo-200 transition">Tambah Soal</button>
               </div>
               <table className="w-full text-left text-sm text-slate-600">
                 <thead className="bg-white border-b border-slate-100">
@@ -856,7 +764,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                       <td className="px-6 py-4"><span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-xs font-bold uppercase">{q.question_type.replace('_',' ')}</span></td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex gap-1 justify-center">
-                          <button onClick={() => { setQuestionForm({ ...q, examId: q.examId || visibleExams[0]?.id }); setQuestionModalOpen(true); }} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit size={16} /></button>
+                          <button onClick={() => { setQuestionForm({ id: q.id, question_text: q.question_text }); setQuestionModalOpen(true); }} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit size={16} /></button>
                           <button onClick={() => deleteItem(setQuestions, questions, 'id', q.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
                         </div>
                       </td>
@@ -1050,7 +958,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
               </div>
               <button onClick={() => {
                  const headers = "NIS,Nama Siswa,Kelas,Ujian,Nilai PG\n";
-                 const rows = examSessions.filter(s=>s.status==='completed' && visibleExamIds.includes(s.examId)).map((s:any)=>{
+                 const rows = examSessions.filter((s:any)=>s.status==='completed' && visibleExamIds.includes(s.examId)).map((s:any)=>{
                      const exTitle = exams.find((e:any)=>e.id === s.examId)?.title || '-';
                      return `${s.nis},${s.name},${s.className},${exTitle},${s.score}`;
                  }).join("\n");
@@ -1172,137 +1080,13 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
           </form>
         </Modal>
 
-        <Modal title={`${questionForm.id ? 'Edit' : 'Tambah'} Soal`} isOpen={isQuestionModalOpen} onClose={() => setQuestionModalOpen(false)}>
-          <form onSubmit={saveQuestion} className="space-y-4 max-h-[75vh] overflow-y-auto pr-2 pb-2">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Ujian (Paket Soal)</label>
-              <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" required
-                value={questionForm.examId} onChange={e => setQuestionForm({...questionForm, examId: e.target.value})}>
-                <option value="" disabled>-- Pilih Ujian --</option>
-                {visibleExams.map((ex:any) => <option key={ex.id} value={ex.id}>{ex.title}</option>)}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Tipe Soal</label>
-              <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" 
-                value={questionForm.question_type} 
-                onChange={e => {
-                  const type = e.target.value;
-                  let payload = {}; let answer_key = {};
-                  if (type === 'multiple_choice') { payload = { options: ['','','',''] }; answer_key = { correct: '' }; }
-                  else if (type === 'complex_mc') { payload = { options: ['','','',''] }; answer_key = { correct: [] }; }
-                  else if (type === 'matching') { payload = { left: ['','',''], right: ['','',''] }; answer_key = { matches: {} }; }
-                  else if (type === 'short_answer') { payload = {}; answer_key = { answers: [''] }; }
-                  else if (type === 'essay') { payload = { rubric: '' }; answer_key = {}; }
-                  setQuestionForm({...questionForm, question_type: type, payload, answer_key});
-                }}>
-                <option value="multiple_choice">Pilihan Ganda (PG)</option>
-                <option value="complex_mc">Pilihan Ganda Kompleks (PGK)</option>
-                <option value="matching">Menjodohkan</option>
-                <option value="short_answer">Isian Singkat</option>
-                <option value="essay">Uraian / Essay</option>
-              </select>
-            </div>
-
+        <Modal title="Edit Teks Soal" isOpen={isQuestionModalOpen} onClose={() => setQuestionModalOpen(false)}>
+          <form onSubmit={saveQuestion} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Pertanyaan / Teks Soal</label>
-              <textarea required rows={3} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={questionForm.question_text} onChange={e=>setQuestionForm({...questionForm, question_text: e.target.value})} placeholder="Tuliskan soal disini..." />
+              <textarea required rows={5} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={questionForm.question_text} onChange={e=>setQuestionForm({...questionForm, question_text: e.target.value})} placeholder="Tuliskan soal disini..." />
             </div>
-
-            {/* Field Dinamis Opsi PG & PGK */}
-            {(questionForm.question_type === 'multiple_choice' || questionForm.question_type === 'complex_mc') && (
-              <div className="p-3 border border-indigo-100 bg-indigo-50/30 rounded-xl">
-                <label className="block text-xs font-bold text-slate-700 mb-2">Opsi Jawaban (Pilih Kunci yang Benar)</label>
-                {questionForm.payload?.options?.map((opt:string, idx:number) => (
-                  <div key={idx} className="flex items-center gap-2 mb-2">
-                    {questionForm.question_type === 'multiple_choice' ? (
-                      <input type="radio" name="pg_correct" 
-                        checked={questionForm.answer_key?.correct === opt && opt !== ''} 
-                        onChange={() => setQuestionForm({...questionForm, answer_key: { correct: opt }})} 
-                        className="w-5 h-5 text-indigo-600 focus:ring-indigo-500" />
-                    ) : (
-                      <input type="checkbox" 
-                        checked={questionForm.answer_key?.correct?.includes(opt)} 
-                        onChange={(e) => {
-                          let arr = questionForm.answer_key?.correct || [];
-                          if(e.target.checked) arr.push(opt);
-                          else arr = arr.filter((x:string) => x !== opt);
-                          setQuestionForm({...questionForm, answer_key: { correct: arr }});
-                        }} 
-                        className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" />
-                    )}
-                    <input required type="text" className="flex-1 p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-indigo-500 text-sm" 
-                      value={opt} placeholder={`Opsi ${idx+1}`} 
-                      onChange={e => {
-                        const newOpts = [...questionForm.payload.options];
-                        const oldVal = newOpts[idx];
-                        newOpts[idx] = e.target.value;
-                        let newKey = {...questionForm.answer_key};
-                        if(questionForm.question_type === 'multiple_choice' && newKey.correct === oldVal) newKey.correct = e.target.value;
-                        if(questionForm.question_type === 'complex_mc' && newKey.correct?.includes(oldVal)) {
-                           newKey.correct = newKey.correct.map((x:string) => x === oldVal ? e.target.value : x);
-                        }
-                        setQuestionForm({...questionForm, payload: { options: newOpts }, answer_key: newKey});
-                      }} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Field Dinamis Menjodohkan */}
-            {questionForm.question_type === 'matching' && (
-               <div className="p-3 border border-indigo-100 bg-indigo-50/30 rounded-xl">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Pasangan (Pernyataan = Jawaban Kanan)</label>
-                  <div className="text-xs text-slate-500 mb-3">Kolom Kanan akan diacak otomatis saat ujian.</div>
-                  {[0, 1, 2].map(idx => {
-                     const leftArr = questionForm.payload?.left || [];
-                     const rightArr = questionForm.payload?.right || [];
-                     const matches = questionForm.answer_key?.matches || {};
-                     return (
-                       <div key={idx} className="flex items-center gap-2 mb-2">
-                         <input type="text" className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500" placeholder="Pernyataan Kiri"
-                            value={leftArr[idx] || ''}
-                            onChange={e => {
-                               const nl = [...leftArr]; nl[idx] = e.target.value;
-                               const nm = {...matches};
-                               if (e.target.value && rightArr[idx]) nm[e.target.value] = rightArr[idx];
-                               if (leftArr[idx] && leftArr[idx] !== e.target.value) delete nm[leftArr[idx]];
-                               setQuestionForm({...questionForm, payload: {...questionForm.payload, left: nl}, answer_key: {matches: nm}});
-                            }} />
-                         <span className="font-bold text-slate-400">=</span>
-                         <input type="text" className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500" placeholder="Jawaban Kanan"
-                            value={rightArr[idx] || ''}
-                            onChange={e => {
-                               const nr = [...rightArr]; nr[idx] = e.target.value;
-                               const nm = {...matches};
-                               if (leftArr[idx]) nm[leftArr[idx]] = e.target.value;
-                               setQuestionForm({...questionForm, payload: {...questionForm.payload, right: nr}, answer_key: {matches: nm}});
-                            }} />
-                       </div>
-                     )
-                  })}
-               </div>
-            )}
-
-            {/* Field Dinamis Isian Singkat */}
-            {questionForm.question_type === 'short_answer' && (
-              <div className="p-3 border border-indigo-100 bg-indigo-50/30 rounded-xl">
-                <label className="block text-xs font-bold text-slate-700 mb-1">Kunci Jawaban Singkat (Pisahkan koma)</label>
-                <input required type="text" className="w-full p-2 bg-white border border-slate-200 rounded-lg outline-none focus:border-indigo-500 text-sm" 
-                   value={(questionForm.answer_key?.answers || []).join(', ')} 
-                   onChange={e => setQuestionForm({...questionForm, answer_key: { answers: e.target.value.split(',').map(s=>s.trim()) }})}
-                   placeholder="Contoh: jakarta, dki jakarta" />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Bobot Nilai / Poin</label>
-              <input required type="number" min={1} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" 
-                value={questionForm.weight || 1} onChange={e=>setQuestionForm({...questionForm, weight: Number(e.target.value)})} />
-            </div>
-
-            <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-md transition-all mt-2">Simpan Soal</button>
+            <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700">Simpan Perubahan</button>
           </form>
         </Modal>
 
