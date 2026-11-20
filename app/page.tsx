@@ -121,12 +121,48 @@ const shuffleArraySeeded = (array: any[], seedString: string) => {
 // ==========================================
 // 3. MAIN APP COMPONENT (SUPABASE CONNECTED)
 // ==========================================
+const AUTH_STORAGE_KEY = 'cbt_persisted_auth_v1';
+
 export default function CBTApp() {
   const [view, setView] = useState<'login' | 'exam' | 'admin'>('login');
   const [session, setSession] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
+
+  const persistAuth = useCallback((nextView: 'login' | 'exam' | 'admin', nextUser: any, nextSession: any) => {
+    if (nextView === 'login') {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } else {
+      localStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({
+          view: nextView,
+          currentUser: nextUser,
+          session: nextSession
+        })
+      );
+    }
+  }, []);
+
+  // Pulihkan sesi login dari localStorage saat halaman dimuat ulang (refresh)
+  useEffect(() => {
+    try {
+      const savedRaw = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (savedRaw) {
+        const saved = JSON.parse(savedRaw);
+        if (saved.view === 'admin' && saved.currentUser) {
+          setCurrentUser(saved.currentUser);
+          setView('admin');
+        } else if (saved.view === 'exam' && saved.session) {
+          setSession(saved.session);
+          setView('exam');
+        }
+      }
+    } catch {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+  }, []);
 
   // Global States synced with Supabase
   const [teachers, setTeachers] = useState<TeacherItem[]>([]);
@@ -323,16 +359,21 @@ export default function CBTApp() {
           onStudentLogin={(sess: any) => {
             setSession(sess);
             setView('exam');
+            persistAuth('exam', null, sess);
           }}
           onAdminLogin={() => {
-            setCurrentUser({ role: 'admin' });
+            const adminUser = { role: 'admin' };
+            setCurrentUser(adminUser);
             fetchAllData();
             setView('admin');
+            persistAuth('admin', adminUser, null);
           }}
           onTeacherLogin={(teacher: any) => {
-            setCurrentUser({ role: 'teacher', ...teacher });
+            const teacherUser = { role: 'teacher', ...teacher };
+            setCurrentUser(teacherUser);
             fetchAllData();
             setView('admin');
+            persistAuth('admin', teacherUser, null);
           }}
         />
       )}
@@ -344,6 +385,7 @@ export default function CBTApp() {
             setSession(null);
             fetchAllData();
             setView('login');
+            persistAuth('login', null, null);
           }}
         />
       )}
@@ -366,7 +408,11 @@ export default function CBTApp() {
           examSessions={examSessions}
           setExamSessions={setExamSessions}
           onRefresh={fetchAllData}
-          onBack={() => setView('login')}
+          onBack={() => {
+            setCurrentUser(null);
+            setView('login');
+            persistAuth('login', null, null);
+          }}
         />
       )}
     </div>
@@ -453,6 +499,7 @@ function LoginView({ exams, subjects, students, teachers, onStudentLogin, onAdmi
         let activeSessionId = existingSession?.id;
         let savedAnswers = existingSession?.answers || {};
         let savedViolations = existingSession?.violations || 0;
+        let startedAtMs = existingSession?.started_at ? new Date(existingSession.started_at).getTime() : Date.now();
 
         if (!existingSession) {
           const { data: newSession, error: insertErr } = await supabase
@@ -474,7 +521,10 @@ function LoginView({ exams, subjects, students, teachers, onStudentLogin, onAdmi
             return;
           }
           activeSessionId = newSession.id;
+          startedAtMs = newSession.started_at ? new Date(newSession.started_at).getTime() : Date.now();
         }
+
+        const endTime = startedAtMs + examData.duration_minutes * 60 * 1000;
 
         onStudentLogin({
           sessionId: activeSessionId,
@@ -486,6 +536,7 @@ function LoginView({ exams, subjects, students, teachers, onStudentLogin, onAdmi
           examTitle: examData.title,
           subjectName: subject?.name || 'Mata Pelajaran',
           duration: examData.duration_minutes,
+          endTime,
           initialAnswers: savedAnswers,
           initialViolations: savedViolations
         });
@@ -604,7 +655,12 @@ function ExamView({ session, onFinish }: any) {
   const [questions, setQuestions] = useState<any[]>([]);
   const [answers, setAnswers] = useState<Record<string, any>>(session.initialAnswers || {});
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(session.duration * 60);
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (session.endTime) {
+      return Math.max(0, Math.floor((session.endTime - Date.now()) / 1000));
+    }
+    return session.duration * 60;
+  });
   const [syncStatus, setSyncStatus] = useState<'Tersimpan' | 'Menyimpan...' | 'Offline'>('Tersimpan');
   const [violations, setViolations] = useState(session.initialViolations || 0);
   const [isLocked, setIsLocked] = useState(false);
@@ -613,10 +669,25 @@ function ExamView({ session, onFinish }: any) {
   const [confirmModal, setConfirmModal] = useState(false);
   const [alertModal, setAlertModal] = useState<{ title: string; message: string; onClose?: () => void } | null>(null);
 
-  // Ambil soal dari view student_questions (tanpa answer_key)
+  // Ambil soal dari view student_questions & verifikasi status sesi terbaru saat refresh
   useEffect(() => {
     const loadQuestions = async () => {
       if (!supabase) return;
+
+      const { data: latestSession, error: sessErr } = await supabase
+        .from('exam_sessions')
+        .select('*')
+        .eq('id', session.sessionId)
+        .maybeSingle();
+
+      if (sessErr || !latestSession || latestSession.status === 'completed' || latestSession.status === 'locked') {
+        localStorage.removeItem(`cbt_ans_${session.sessionId}`);
+        onFinish();
+        return;
+      }
+
+      setViolations(latestSession.violations || 0);
+
       const { data, error } = await supabase
         .from('student_questions')
         .select('*')
@@ -629,13 +700,16 @@ function ExamView({ session, onFinish }: any) {
       }
 
       const localAns = localStorage.getItem(`cbt_ans_${session.sessionId}`);
+      const dbAns = latestSession.answers || {};
       if (localAns) {
-        setAnswers((prev) => ({ ...prev, ...JSON.parse(localAns) }));
+        setAnswers({ ...dbAns, ...JSON.parse(localAns) });
+      } else {
+        setAnswers(dbAns);
       }
       setLoading(false);
     };
     loadQuestions();
-  }, [session]);
+  }, [session, onFinish]);
 
   const syncToSupabase = useCallback(
     async (currentAnswers: Record<string, any>, currentViolations: number, statusOverride?: string) => {
@@ -999,8 +1073,22 @@ function AdminDashboard({
   onRefresh,
   onBack
 }: any) {
-  const [activeTab, setActiveTab] = useState<'exams' | 'questions' | 'students' | 'classes' | 'teachers' | 'monitoring' | 'rekap'>('monitoring');
+  const [activeTab, setActiveTab] = useState<'exams' | 'questions' | 'students' | 'classes' | 'teachers' | 'monitoring' | 'rekap'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('cbt_admin_tab_v1') as any;
+      if (savedTab) return savedTab;
+    }
+    return 'monitoring';
+  });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (currentUser?.role === 'teacher' && ['teachers', 'classes', 'students'].includes(activeTab)) {
+      setActiveTab('monitoring');
+      return;
+    }
+    localStorage.setItem('cbt_admin_tab_v1', activeTab);
+  }, [activeTab, currentUser?.role]);
 
   // Modal States
   const [isTeacherModalOpen, setTeacherModalOpen] = useState(false);
@@ -1298,7 +1386,15 @@ function AdminDashboard({
         </nav>
         <div className="p-4 border-t border-slate-800 space-y-2">
           <button onClick={onRefresh} className="w-full text-left px-4 py-2.5 rounded-xl flex items-center text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition font-semibold text-sm"><RefreshCw size={16} className="mr-3" /> Sinkronkan Data</button>
-          <button onClick={onBack} className="w-full text-left px-4 py-3 rounded-xl flex items-center text-slate-400 hover:text-red-400 hover:bg-slate-800 transition font-bold"><LogOut size={18} className="mr-3" /> Keluar</button>
+          <button
+            onClick={() => {
+              localStorage.removeItem('cbt_admin_tab_v1');
+              onBack();
+            }}
+            className="w-full text-left px-4 py-3 rounded-xl flex items-center text-slate-400 hover:text-red-400 hover:bg-slate-800 transition font-bold"
+          >
+            <LogOut size={18} className="mr-3" /> Keluar
+          </button>
         </div>
       </aside>
 
