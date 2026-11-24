@@ -36,6 +36,7 @@ const RefreshCw = (p: any) => <IconBase {...p}><polyline points="23 4 23 10 17 1
 const Briefcase = (p: any) => <IconBase {...p}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></IconBase>;
 const Menu = (p: any) => <IconBase {...p}><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></IconBase>;
 const XIcon = (p: any) => <IconBase {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></IconBase>;
+const Printer = (p: any) => <IconBase {...p}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></IconBase>;
 
 // ==========================================
 // 2. DATA TYPES & HELPERS
@@ -1365,6 +1366,135 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
     reader.readAsBinaryString(file);
   };
 
+  // Cetak Kartu Peserta Siswa (bisa cetak semua sesuai filter kelas atau per siswa)
+  const handlePrintKartuPeserta = (targetStudents?: StudentItem[]) => {
+    const listToPrint = targetStudents
+      ? targetStudents
+      : students.filter((s: StudentItem) => selectedBankClassId === 'ALL' || s.classId === selectedBankClassId);
+
+    if (!listToPrint || listToPrint.length === 0) {
+      setAdminAlert('Tidak ada data siswa untuk dicetak.');
+      return;
+    }
+
+    const escapeHtml = (str: string) =>
+      String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const logoUrl = `${window.location.origin}/logo-sekolah.png`;
+    const cardsHtml = listToPrint
+      .map(
+        (s: StudentItem) => `
+          <div class="card">
+            <div class="card-header">
+              <img src="${logoUrl}" alt="Logo" class="logo" onerror="this.style.display='none'" />
+              <div class="header-text">
+                <div class="title">KARTU PESERTA UJIAN</div>
+                <div class="school">SMKS ISLAM NURUL JADID</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <table class="info-table">
+                <tr>
+                  <td class="label">No. Peserta / NIS</td>
+                  <td class="sep">:</td>
+                  <td class="val mono">${escapeHtml(s.nis)}</td>
+                </tr>
+                <tr>
+                  <td class="label">Nama Lengkap</td>
+                  <td class="sep">:</td>
+                  <td class="val">${escapeHtml(s.name)}</td>
+                </tr>
+                <tr>
+                  <td class="label">Kelas</td>
+                  <td class="sep">:</td>
+                  <td class="val">${escapeHtml(s.className)}</td>
+                </tr>
+              </table>
+            </div>
+            <div class="card-footer">
+              <div class="note">Harap dibawa saat mengikuti ujian.</div>
+              <div class="sign">
+                <div>Panitia Ujian,</div>
+                <div class="sign-space"></div>
+                <div class="sign-line"></div>
+              </div>
+            </div>
+          </div>
+        `
+      )
+      .join('');
+
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+      setAdminAlert('Popup diblokir oleh browser. Izinkan popup untuk mencetak kartu peserta.');
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="id">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Cetak Kartu Peserta Ujian</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 16px; background: #f1f5f9; color: #0f172a; }
+          .toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
+          .btn { padding: 10px 18px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
+          .btn-print { background: #059669; color: #ffffff; }
+          .btn-close { background: #e2e8f0; color: #334155; }
+          .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 210mm; margin: 0 auto; }
+          .card { background: #ffffff; border: 1.5px solid #1e293b; border-radius: 8px; padding: 12px 14px; page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; justify-content: space-between; min-height: 175px; }
+          .card-header { display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #047857; padding-bottom: 8px; margin-bottom: 10px; }
+          .logo { width: 38px; height: 38px; object-fit: contain; }
+          .header-text { flex: 1; text-align: center; }
+          .title { font-size: 13px; font-weight: 800; letter-spacing: 0.4px; color: #065f46; }
+          .school { font-size: 11px; font-weight: 700; color: #334155; margin-top: 2px; }
+          .info-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          .info-table td { padding: 3px 2px; vertical-align: top; }
+          .label { width: 110px; font-weight: 600; color: #475569; }
+          .sep { width: 10px; font-weight: 600; }
+          .val { font-weight: 700; color: #0f172a; }
+          .mono { font-family: monospace; font-size: 13px; letter-spacing: 0.5px; }
+          .card-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 12px; padding-top: 6px; border-top: 1px dashed #cbd5e1; font-size: 10px; }
+          .note { color: #64748b; font-style: italic; max-width: 55%; }
+          .sign { text-align: center; min-width: 95px; color: #334155; }
+          .sign-space { height: 28px; }
+          .sign-line { border-bottom: 1px solid #334155; width: 100%; }
+          @page { size: A4; margin: 10mm; }
+          @media print {
+            body { background: #ffffff; padding: 0; }
+            .no-print { display: none !important; }
+            .grid { max-width: 100%; gap: 10px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="toolbar no-print">
+          <button class="btn btn-print" onclick="window.print()">Cetak / Simpan PDF</button>
+          <button class="btn btn-close" onclick="window.close()">Tutup</button>
+        </div>
+        <div class="grid">
+          ${cardsHtml}
+        </div>
+        <script>
+          window.onload = function() {
+            setTimeout(function() { window.print(); }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const handleImportExcelSiswa = (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1378,14 +1508,14 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
         const data = XLSX.utils.sheet_to_json(wb.Sheets[wsname]);
 
         const payloads = data.map((row: any) => {
-          const cls = classes.find((c:any) => c.name === row['Kode Kelas']);
+          const cls = classes.find((c: any) => c.name === row['Kode Kelas']);
           return { nis: String(row['NIS']), name: row['Nama Lengkap'], class_id: cls?.id || null };
         });
-        
+
         if (supabase) {
-           await supabase.from('students').upsert(payloads, { onConflict: 'nis' });
-           onRefresh();
-           setAdminAlert('Berhasil import data siswa dari Excel.');
+          await supabase.from('students').upsert(payloads, { onConflict: 'nis' });
+          onRefresh();
+          setAdminAlert('Berhasil import data siswa dari Excel.');
         }
       } catch (err: any) {
         setAdminAlert('Gagal memproses file Excel. Pastikan format kolom benar: NIS, Nama Lengkap, Kode Kelas.');
@@ -1761,13 +1891,16 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
         {/* STUDENTS */}
         {activeTab === 'students' && (
           <div className="max-w-5xl mx-auto animate-in fade-in duration-300">
-            <div className="flex justify-between items-end mb-6">
+            <div className="flex flex-wrap justify-between items-end gap-3 mb-6">
               <div><h2 className="text-3xl font-extrabold text-slate-800">Data Siswa</h2></div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <select className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 outline-none" value={selectedBankClassId} onChange={(e) => setSelectedBankClassId(e.target.value)}>
                   <option value="ALL">Semua Kelas</option>
                   {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+                <button onClick={() => handlePrintKartuPeserta()} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-md flex items-center transition">
+                  <Printer size={18} className="mr-2" /> Cetak Kartu
+                </button>
                 <label className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md flex items-center cursor-pointer">
                   Import Excel <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportExcelSiswa} />
                 </label>
@@ -1786,6 +1919,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                       <td className="px-6 py-4 font-bold text-slate-800">{s.name}</td>
                       <td className="px-6 py-4"><span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg font-bold text-xs">{s.className}</span></td>
                       <td className="px-6 py-4 text-center">
+                        <button onClick={() => handlePrintKartuPeserta([s])} title="Cetak Kartu Siswa Ini" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"><Printer size={16} /></button>
                         <button onClick={() => { setStudentForm({ oldNis: s.nis, nis: s.nis, name: s.name, classId: s.classId }); setStudentModalOpen(true); }} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit size={16} /></button>
                         <button onClick={() => deleteFromSupabase('students', setStudents, students, 'nis', s.nis)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
                       </td>
