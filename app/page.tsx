@@ -34,6 +34,8 @@ const Activity = (p: any) => <IconBase {...p}><polyline points="22 12 18 12 15 2
 const Download = (p: any) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>;
 const RefreshCw = (p: any) => <IconBase {...p}><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></IconBase>;
 const Briefcase = (p: any) => <IconBase {...p}><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></IconBase>;
+const Menu = (p: any) => <IconBase {...p}><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></IconBase>;
+const XIcon = (p: any) => <IconBase {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></IconBase>;
 
 // ==========================================
 // 2. DATA TYPES & HELPERS
@@ -1134,6 +1136,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
     return 'monitoring';
   });
   const [saving, setSaving] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (currentUser?.role === 'teacher' && ['teachers', 'classes', 'students'].includes(activeTab)) setActiveTab('monitoring');
@@ -1175,6 +1178,192 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
 
   const [adminAlert, setAdminAlert] = useState<string | null>(null);
   const [adminConfirm, setAdminConfirm] = useState<{ message: string; action: () => Promise<void> | void } | null>(null);
+
+  // Fungsi navigasi menu sekaligus menutup sidebar pada tampilan mobile
+  const handleSelectTab = (tab: 'exams' | 'questions' | 'students' | 'classes' | 'teachers' | 'monitoring' | 'rekap') => {
+    setActiveTab(tab);
+    setMobileMenuOpen(false);
+  };
+
+  // Export Excel untuk Data Guru
+  const handleExportExcelGuru = () => {
+    try {
+      const dataToExport = teachers.map((t: TeacherItem, idx: number) => {
+        const mapelNames = (t.subjectIds || [])
+          .map((id: string) => subjects.find((s: SubjectItem) => s.id === id)?.name)
+          .filter(Boolean)
+          .join(', ');
+        return {
+          No: idx + 1,
+          'Nama Lengkap': t.name,
+          Username: t.username,
+          Password: t.password,
+          'Mata Pelajaran': mapelNames || '-'
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Guru');
+      XLSX.writeFile(workbook, 'Data_Guru.xlsx');
+    } catch {
+      setAdminAlert('Gagal mengekspor data guru ke Excel.');
+    }
+  };
+
+  // Export Excel untuk Data Mapel
+  const handleExportExcelMapel = () => {
+    try {
+      const dataToExport = filteredBankSubjects.map((sub: SubjectItem, idx: number) => {
+        const cls = classes.find((c: ClassItem) => c.id === sub.class_id);
+        const totalQuestions = questions.filter((q: QuestionItem) => q.subjectId === sub.id).length;
+        return {
+          No: idx + 1,
+          'Kode Mapel': sub.code,
+          'Nama Mapel': sub.name,
+          Kelas: cls ? cls.name : 'Semua Kelas',
+          'Jumlah Soal': totalQuestions
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Mapel');
+      XLSX.writeFile(workbook, 'Data_Mapel.xlsx');
+    } catch {
+      setAdminAlert('Gagal mengekspor data mapel ke Excel.');
+    }
+  };
+
+  // Import Excel untuk Data Guru
+  const handleImportExcelGuru = (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt: any) => {
+      try {
+        setSaving(true);
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const data = XLSX.utils.sheet_to_json(wb.Sheets[wsname]);
+
+        const payloads = data
+          .filter((row: any) => row['Nama Lengkap'] && row['Username'])
+          .map((row: any) => {
+            const rawMapel = String(row['Mata Pelajaran'] || '').trim();
+            const matchedSubjectIds = rawMapel && rawMapel !== '-'
+              ? rawMapel
+                  .split(',')
+                  .map((m: string) => m.trim().toLowerCase())
+                  .map((m: string) => subjects.find((s: SubjectItem) => s.name.toLowerCase() === m || s.code.toLowerCase() === m)?.id)
+                  .filter(Boolean)
+              : [];
+            return {
+              name: String(row['Nama Lengkap']).trim(),
+              username: String(row['Username']).trim(),
+              password: String(row['Password'] || '123456').trim(),
+              subject_ids: matchedSubjectIds
+            };
+          });
+
+        if (payloads.length === 0) {
+          setAdminAlert('Data kosong atau format kolom tidak sesuai. Gunakan kolom: Nama Lengkap, Username, Password, Mata Pelajaran.');
+          setSaving(false);
+          e.target.value = '';
+          return;
+        }
+
+        if (supabase) {
+          const toInsert: any[] = [];
+          for (const item of payloads) {
+            const existing = teachers.find((t: TeacherItem) => t.username === item.username);
+            if (existing) {
+              const { error } = await supabase.from('teachers').update(item).eq('id', existing.id);
+              if (error) throw error;
+            } else {
+              toInsert.push(item);
+            }
+          }
+          if (toInsert.length > 0) {
+            const { error } = await supabase.from('teachers').insert(toInsert);
+            if (error) throw error;
+          }
+          onRefresh();
+          setAdminAlert('Berhasil import data guru dari Excel.');
+        }
+      } catch (err: any) {
+        setAdminAlert('Gagal memproses file Excel. Pastikan format kolom benar: Nama Lengkap, Username, Password, Mata Pelajaran.');
+      }
+      setSaving(false);
+      e.target.value = '';
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  // Import Excel untuk Data Mapel
+  const handleImportExcelMapel = (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt: any) => {
+      try {
+        setSaving(true);
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const data = XLSX.utils.sheet_to_json(wb.Sheets[wsname]);
+
+        const payloads = data
+          .filter((row: any) => row['Kode Mapel'] && row['Nama Mapel'])
+          .map((row: any) => {
+            const kelasStr = String(row['Kelas'] || row['Kode Kelas'] || '').trim();
+            const cls = kelasStr && kelasStr.toLowerCase() !== 'semua kelas'
+              ? classes.find((c: ClassItem) => c.name.toLowerCase() === kelasStr.toLowerCase())
+              : null;
+            return {
+              code: String(row['Kode Mapel']).trim().toUpperCase(),
+              name: String(row['Nama Mapel']).trim(),
+              class_id: cls?.id || null,
+              grade_level: ''
+            };
+          });
+
+        if (payloads.length === 0) {
+          setAdminAlert('Data kosong atau format kolom tidak sesuai. Gunakan kolom: Kode Mapel, Nama Mapel, Kelas.');
+          setSaving(false);
+          e.target.value = '';
+          return;
+        }
+
+        if (supabase) {
+          const toInsert: any[] = [];
+          for (const item of payloads) {
+            const existing = subjects.find(
+              (s: SubjectItem) => s.code.toUpperCase() === item.code && (s.class_id || null) === item.class_id
+            );
+            if (existing) {
+              const { error } = await supabase.from('subjects').update(item).eq('id', existing.id);
+              if (error) throw error;
+            } else {
+              toInsert.push(item);
+            }
+          }
+          if (toInsert.length > 0) {
+            const { error } = await supabase.from('subjects').insert(toInsert);
+            if (error) throw error;
+          }
+          onRefresh();
+          setAdminAlert('Berhasil import data mapel dari Excel.');
+        }
+      } catch (err: any) {
+        setAdminAlert('Gagal memproses file Excel. Pastikan format kolom benar: Kode Mapel, Nama Mapel, Kelas.');
+      }
+      setSaving(false);
+      e.target.value = '';
+    };
+    reader.readAsBinaryString(file);
+  };
 
   const handleImportExcelSiswa = (e: any) => {
     const file = e.target.files[0];
@@ -1347,37 +1536,79 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <aside className="w-64 bg-slate-900 text-slate-300 hidden md:flex flex-col z-20 shadow-xl">
-        <div className="p-6 border-b border-slate-800">
-          <h1 className="font-extrabold text-white flex items-center text-xl tracking-tight">
-            {/* Ganti src dengan nama file logo Anda */}
-            <img src="/logo-sekolah.png" alt="Logo" className="w-7 h-7 mr-3 object-contain" />
-            {currentUser.role === 'admin' ? 'Admin Panel' : 'Panel Guru'}
-          </h1>
-          {currentUser.role === 'teacher' && <p className="text-xs text-slate-400 mt-2 font-medium">{currentUser.name}</p>}
+    <div className="flex flex-col md:flex-row h-screen bg-slate-50 overflow-hidden">
+      {/* HEADER MOBILE (Tampil hanya di HP / layar kecil) */}
+      <header className="md:hidden bg-gradient-to-r from-emerald-800 via-green-700 to-emerald-900 text-white px-4 py-3 flex items-center justify-between shadow-md z-30 shrink-0">
+        <div className="flex items-center">
+          <img src="/logo-sekolah.png" alt="Logo" className="w-7 h-7 mr-2.5 object-contain" />
+          <div>
+            <h1 className="font-extrabold text-base leading-tight tracking-tight">
+              {currentUser.role === 'admin' ? 'Admin Panel' : 'Panel Guru'}
+            </h1>
+            {currentUser.role === 'teacher' && <p className="text-[11px] text-emerald-100 font-medium">{currentUser.name}</p>}
+          </div>
+        </div>
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition"
+          aria-label="Buka Menu"
+        >
+          <Menu size={22} />
+        </button>
+      </header>
+
+      {/* OVERLAY BACKDROP MOBILE */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* SIDEBAR RESPONSIF DENGAN WARNA DEGRADASI DOMINAN HIJAU */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-b from-emerald-700 via-green-800 to-emerald-950 text-emerald-50 flex flex-col shadow-xl transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 shrink-0 ${
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-6 border-b border-emerald-600/40 flex items-center justify-between">
+          <div>
+            <h1 className="font-extrabold text-white flex items-center text-xl tracking-tight">
+              {/* Ganti src dengan nama file logo Anda */}
+              <img src="/logo-sekolah.png" alt="Logo" className="w-7 h-7 mr-3 object-contain" />
+              {currentUser.role === 'admin' ? 'Admin Panel' : 'Panel Guru'}
+            </h1>
+            {currentUser.role === 'teacher' && <p className="text-xs text-emerald-200 mt-2 font-medium">{currentUser.name}</p>}
+          </div>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="md:hidden p-1.5 rounded-lg text-emerald-100 hover:bg-white/10 transition"
+            aria-label="Tutup Menu"
+          >
+            <XIcon size={20} />
+          </button>
         </div>
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-4 mb-2">Pelaksanaan & Hasil</p>
-          <button onClick={() => setActiveTab('monitoring')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold ${activeTab === 'monitoring' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800'}`}><Activity size={18} className="mr-3" /> Live Monitoring</button>
-          <button onClick={() => setActiveTab('rekap')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold ${activeTab === 'rekap' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800'}`}><Download size={18} className="mr-3" /> Rekap Nilai</button>
+          <p className="px-4 text-xs font-bold text-emerald-300/80 uppercase tracking-wider mt-4 mb-2">Pelaksanaan & Hasil</p>
+          <button onClick={() => handleSelectTab('monitoring')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold transition-all ${activeTab === 'monitoring' ? 'bg-white text-emerald-900 shadow-md' : 'text-emerald-50 hover:bg-white/10'}`}><Activity size={18} className="mr-3" /> Live Monitoring</button>
+          <button onClick={() => handleSelectTab('rekap')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold transition-all ${activeTab === 'rekap' ? 'bg-white text-emerald-900 shadow-md' : 'text-emerald-50 hover:bg-white/10'}`}><Download size={18} className="mr-3" /> Rekap Nilai</button>
 
-          <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-8 mb-2">Ujian & Soal</p>
-          <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold ${activeTab === 'exams' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800'}`}><FileText size={18} className="mr-3" /> Jadwal & Ujian</button>
-          <button onClick={() => setActiveTab('questions')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold ${activeTab === 'questions' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800'}`}><LayoutGrid size={18} className="mr-3" /> Bank Soal</button>
+          <p className="px-4 text-xs font-bold text-emerald-300/80 uppercase tracking-wider mt-8 mb-2">Ujian & Soal</p>
+          <button onClick={() => handleSelectTab('exams')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold transition-all ${activeTab === 'exams' ? 'bg-white text-emerald-900 shadow-md' : 'text-emerald-50 hover:bg-white/10'}`}><FileText size={18} className="mr-3" /> Jadwal & Ujian</button>
+          <button onClick={() => handleSelectTab('questions')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold transition-all ${activeTab === 'questions' ? 'bg-white text-emerald-900 shadow-md' : 'text-emerald-50 hover:bg-white/10'}`}><LayoutGrid size={18} className="mr-3" /> Bank Soal</button>
 
           {currentUser.role === 'admin' && (
             <>
-              <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mt-8 mb-2">Master Data</p>
-              <button onClick={() => setActiveTab('teachers')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold ${activeTab === 'teachers' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}><Briefcase size={18} className="mr-3" /> Data Guru</button>
-              <button onClick={() => setActiveTab('classes')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold ${activeTab === 'classes' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}><LayoutGrid size={18} className="mr-3" /> Data Kelas</button>
-              <button onClick={() => setActiveTab('students')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold ${activeTab === 'students' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}><Users size={18} className="mr-3" /> Data Siswa</button>
+              <p className="px-4 text-xs font-bold text-emerald-300/80 uppercase tracking-wider mt-8 mb-2">Master Data</p>
+              <button onClick={() => handleSelectTab('teachers')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold transition-all ${activeTab === 'teachers' ? 'bg-white text-emerald-900 shadow-md' : 'text-emerald-50 hover:bg-white/10'}`}><Briefcase size={18} className="mr-3" /> Data Guru</button>
+              <button onClick={() => handleSelectTab('classes')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold transition-all ${activeTab === 'classes' ? 'bg-white text-emerald-900 shadow-md' : 'text-emerald-50 hover:bg-white/10'}`}><LayoutGrid size={18} className="mr-3" /> Data Kelas</button>
+              <button onClick={() => handleSelectTab('students')} className={`w-full text-left px-4 py-3 rounded-xl flex items-center font-semibold transition-all ${activeTab === 'students' ? 'bg-white text-emerald-900 shadow-md' : 'text-emerald-50 hover:bg-white/10'}`}><Users size={18} className="mr-3" /> Data Siswa</button>
             </>
           )}
         </nav>
-        <div className="p-4 border-t border-slate-800 space-y-2">
-          <button onClick={onRefresh} className="w-full text-left px-4 py-2.5 rounded-xl flex items-center text-slate-400 hover:text-indigo-400 hover:bg-slate-800 font-semibold text-sm"><RefreshCw size={16} className="mr-3" /> Sinkronkan</button>
-          <button onClick={() => { localStorage.removeItem('cbt_admin_tab_v2'); onBack(); }} className="w-full text-left px-4 py-3 rounded-xl flex items-center text-slate-400 hover:text-red-400 hover:bg-slate-800 font-bold"><LogOut size={18} className="mr-3" /> Keluar</button>
+        <div className="p-4 border-t border-emerald-600/40 space-y-2">
+          <button onClick={() => { onRefresh(); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-2.5 rounded-xl flex items-center text-emerald-100 hover:text-white hover:bg-white/10 font-semibold text-sm transition"><RefreshCw size={16} className="mr-3" /> Sinkronkan</button>
+          <button onClick={() => { localStorage.removeItem('cbt_admin_tab_v2'); onBack(); }} className="w-full text-left px-4 py-3 rounded-xl flex items-center text-emerald-100 hover:text-red-200 hover:bg-red-500/20 font-bold transition"><LogOut size={18} className="mr-3" /> Keluar</button>
         </div>
       </aside>
 
@@ -1414,9 +1645,15 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
         {/* QUESTIONS */}
         {activeTab === 'questions' && (
           <div className="max-w-5xl mx-auto animate-in fade-in duration-300">
-            <div className="flex justify-between items-end mb-6">
+            <div className="flex flex-wrap justify-between items-end gap-3 mb-6">
               <div><h2 className="text-3xl font-extrabold text-slate-800">Bank Soal</h2></div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button onClick={handleExportExcelMapel} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md flex items-center transition"><Download size={18} className="mr-2" /> Export Excel</button>
+                {currentUser.role === 'admin' && (
+                  <label className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow-md flex items-center cursor-pointer transition">
+                    Import Excel <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportExcelMapel} />
+                  </label>
+                )}
                 {currentUser.role === 'admin' && <button onClick={() => { setSubjectForm({ id: '', class_id: selectedBankClassId !== 'ALL' ? selectedBankClassId : '', code: '', name: '', grade: '' }); setSubjectModalOpen(true); }} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-md flex items-center transition"><PlusCircle size={18} className="mr-2" /> Tambah Mapel</button>}
               </div>
             </div>
@@ -1590,9 +1827,15 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
 
         {activeTab === 'teachers' && currentUser.role === 'admin' && (
           <div className="max-w-5xl mx-auto animate-in fade-in duration-300">
-            <div className="flex justify-between items-end mb-6">
+            <div className="flex flex-wrap justify-between items-end gap-3 mb-6">
               <h2 className="text-3xl font-extrabold text-slate-800">Data Guru</h2>
-              <button onClick={() => { setTeacherForm({ id: '', username: '', password: '', name: '', subjectIds: [] }); setTeacherModalOpen(true); }} className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-md">Tambah Guru</button>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={handleExportExcelGuru} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md flex items-center transition"><Download size={18} className="mr-2" /> Export Excel</button>
+                <label className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow-md flex items-center cursor-pointer transition">
+                  Import Excel <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportExcelGuru} />
+                </label>
+                <button onClick={() => { setTeacherForm({ id: '', username: '', password: '', name: '', subjectIds: [] }); setTeacherModalOpen(true); }} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition">Tambah Guru</button>
+              </div>
             </div>
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
               <table className="w-full text-left text-sm text-slate-600">
