@@ -29,7 +29,7 @@ const Edit = (p: any) => <IconBase {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 
 const Trash2 = (p: any) => <IconBase {...p}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></IconBase>;
 const UserIcon = (p: any) => <IconBase {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></IconBase>;
 const LockIcon = (p: any) => <IconBase {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></IconBase>;
-const ShieldCheck = (p: any) => <IconBase {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></IconBase>;
+const ShieldCheck = (p: any) => <IconBase {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></IconBase>;
 const Activity = (p: any) => <IconBase {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></IconBase>;
 const Download = (p: any) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></IconBase>;
 const RefreshCw = (p: any) => <IconBase {...p}><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></IconBase>;
@@ -37,6 +37,8 @@ const Briefcase = (p: any) => <IconBase {...p}><rect x="2" y="7" width="20" heig
 const Menu = (p: any) => <IconBase {...p}><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></IconBase>;
 const XIcon = (p: any) => <IconBase {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></IconBase>;
 const Printer = (p: any) => <IconBase {...p}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></IconBase>;
+const ImageIcon = (p: any) => <IconBase {...p}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></IconBase>;
+const SlidersIcon = (p: any) => <IconBase {...p}><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></IconBase>;
 
 // ==========================================
 // 2. DATA TYPES & HELPERS
@@ -128,6 +130,38 @@ const shuffleArraySeeded = (array: any[], seedString: string) => {
   return newArray;
 };
 
+const compressImageToBase64 = (file: File, maxWidth = 800, quality = 0.75): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Gagal memproses gambar.'));
+          return;
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('File bukan gambar yang valid.'));
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
+    reader.readAsDataURL(file);
+  });
+};
+
 // ==========================================
 // 3. MAIN APP COMPONENT
 // ==========================================
@@ -211,7 +245,7 @@ export default function CBTApp() {
       if (subjectsRes.error) throw subjectsRes.error;
 
       setClasses(classesRes.data || []);
-      
+
       setSubjects(
         (subjectsRes.data || []).map((s: any) => ({
           id: s.id,
@@ -496,7 +530,7 @@ function LoginView({ exams, subjects, students, teachers, onStudentLogin, onAdmi
           const localDate = new Date(now.getTime() - offsetMs);
           const currentStr = localDate.toISOString().split('T')[0];
           const currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
-          
+
           if (currentStr !== examData.exam_date || currentTime < examData.start_time.substring(0, 5) || currentTime > examData.end_time.substring(0, 5)) {
             setError(`Ujian hanya dapat diakses pada tanggal ${examData.exam_date} jam ${examData.start_time.substring(0, 5)} - ${examData.end_time.substring(0, 5)}`);
             setLoading(false);
@@ -678,6 +712,7 @@ function LoginView({ exams, subjects, students, teachers, onStudentLogin, onAdmi
 // 5. EXAM VIEW
 // ==========================================
 function ExamView({ session, onFinish }: any) {
+  const MIN_FINISH_MINUTES = 30; // Batas minimal waktu sebelum tombol Selesai aktif (menit)
   const [questions, setQuestions] = useState<any[]>([]);
   const [answers, setAnswers] = useState<Record<string, any>>(session.initialAnswers || {});
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -764,43 +799,44 @@ function ExamView({ session, onFinish }: any) {
 
         if (qWithKeys) {
           let correctPoints = 0;
-          let totalAutoPoints = 0;
+          let totalAllPoints = 0;
 
           qWithKeys.forEach((q: any) => {
-             if (q.question_type === 'essay') return; 
-             
-             const weight = Number(q.weight || 1);
-             totalAutoPoints += weight;
-             let isCorrect = false;
+            const weight = Number(q.weight || 1);
+            totalAllPoints += weight;
+            if (q.question_type === 'essay') return;
 
-             if (q.question_type === 'multiple_choice') {
-                if (answers[q.id] === q.answer_key?.correct) isCorrect = true;
-             } else if (q.question_type === 'complex_multiple_choice') {
-                const userAns = Array.isArray(answers[q.id]) ? answers[q.id] : [];
-                const correctAns = Array.isArray(q.answer_key?.correct) ? q.answer_key.correct : [];
-                if (userAns.length === correctAns.length && userAns.every((v: string) => correctAns.includes(v))) {
-                    isCorrect = true;
-                }
-             } else if (q.question_type === 'short_answer') {
-                if (String(answers[q.id] || '').trim().toLowerCase() === String(q.answer_key?.correct || '').trim().toLowerCase()) {
-                    isCorrect = true;
-                }
-             } else if (q.question_type === 'matching') {
-                const userAns = answers[q.id] || {};
-                const correctAns = q.answer_key?.pairs || [];
-                let allMatch = correctAns.length > 0;
-                for (const pair of correctAns) {
-                    if (userAns[pair.prompt] !== pair.target) {
-                        allMatch = false; break;
-                    }
-                }
-                if (allMatch) isCorrect = true;
-             }
+            let isCorrect = false;
 
-             if (isCorrect) correctPoints += weight;
+            if (q.question_type === 'multiple_choice') {
+              if (answers[q.id] === q.answer_key?.correct) isCorrect = true;
+            } else if (q.question_type === 'complex_multiple_choice') {
+              const userAns = Array.isArray(answers[q.id]) ? answers[q.id] : [];
+              const correctAns = Array.isArray(q.answer_key?.correct) ? q.answer_key.correct : [];
+              if (userAns.length === correctAns.length && userAns.every((v: string) => correctAns.includes(v))) {
+                isCorrect = true;
+              }
+            } else if (q.question_type === 'short_answer') {
+              if (String(answers[q.id] || '').trim().toLowerCase() === String(q.answer_key?.correct || '').trim().toLowerCase()) {
+                isCorrect = true;
+              }
+            } else if (q.question_type === 'matching') {
+              const userAns = answers[q.id] || {};
+              const correctAns = q.answer_key?.pairs || [];
+              let allMatch = correctAns.length > 0;
+              for (const pair of correctAns) {
+                if (userAns[pair.prompt] !== pair.target) {
+                  allMatch = false;
+                  break;
+                }
+              }
+              if (allMatch) isCorrect = true;
+            }
+
+            if (isCorrect) correctPoints += weight;
           });
 
-          score = totalAutoPoints > 0 ? Math.round((correctPoints / totalAutoPoints) * 100) : 0;
+          score = totalAllPoints > 0 ? Math.round((correctPoints / totalAllPoints) * 100) : 0;
         }
 
         await supabase
@@ -900,6 +936,17 @@ function ExamView({ session, onFinish }: any) {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const formatShortTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const totalDurationSeconds = (session.duration || 0) * 60;
+  const elapsedSeconds = Math.max(0, totalDurationSeconds - timeLeft);
+  const finishLockRemaining = Math.max(0, MIN_FINISH_MINUTES * 60 - elapsedSeconds);
+  const canFinishExam = finishLockRemaining <= 0;
+
   if (loading) return <div className="p-10 text-center font-bold">Menyiapkan Soal dari Server...</div>;
   if (questions.length === 0) {
     return (
@@ -967,7 +1014,7 @@ function ExamView({ session, onFinish }: any) {
                     ))}
                   </div>
                 )}
-                
+
                 {currentQ.question_type === 'complex_multiple_choice' && (
                   <div className="space-y-3">
                     <p className="text-sm font-bold text-slate-500 mb-2">Pilih jawaban yang benar (Bisa lebih dari satu):</p>
@@ -995,7 +1042,7 @@ function ExamView({ session, onFinish }: any) {
                       return (
                         <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
                           <span className="font-semibold text-slate-700 flex-1">{prompt}</span>
-                          <select 
+                          <select
                             className="p-3 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none flex-1 max-w-xs font-medium"
                             value={currentAns[prompt] || ''}
                             onChange={(e) => handleAnswerChange(currentQ.id, { ...currentAns, [prompt]: e.target.value })}
@@ -1027,11 +1074,9 @@ function ExamView({ session, onFinish }: any) {
                 {currentQ.question_type === 'essay' && (
                   <div>
                     <textarea
-                      placeholder="Tuliskan uraian jawaban Anda..."
-                      rows={8}
-                      autoComplete="off"
-                      spellCheck="false"
-                      className="w-full p-5 border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 text-lg font-medium outline-none transition shadow-sm resize-y"
+                      rows={6}
+                      placeholder="Tuliskan uraian jawaban Anda di sini..."
+                      className="w-full p-5 border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 text-lg font-medium outline-none transition shadow-sm"
                       value={answers[currentQ.id] || ''}
                       onChange={(e) => handleAnswerChange(currentQ.id, e.target.value)}
                     />
@@ -1039,14 +1084,28 @@ function ExamView({ session, onFinish }: any) {
                 )}
               </div>
 
-              <div className="mt-12 flex justify-between pt-6 border-t border-slate-100">
+              <div className="mt-12 flex justify-between items-center gap-3 pt-6 border-t border-slate-100">
                 <button
                   onClick={() => { syncToSupabase(answers, violations); setCurrentIndex(Math.max(0, currentIndex - 1)); }}
                   disabled={currentIndex === 0}
                   className="px-6 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 disabled:opacity-40"
                 >Sebelumnya</button>
                 {currentIndex === questions.length - 1 ? (
-                  <button onClick={() => setConfirmModal(true)} className="px-8 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg">Selesai Ujian</button>
+                  <button
+                    onClick={() => {
+                      if (!canFinishExam) return;
+                      setConfirmModal(true);
+                    }}
+                    disabled={!canFinishExam}
+                    title={!canFinishExam ? `Tombol selesai aktif setelah ${MIN_FINISH_MINUTES} menit ujian berlangsung` : 'Akhiri ujian sekarang'}
+                    className={`px-8 py-3 rounded-xl font-bold transition-all ${
+                      canFinishExam
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg cursor-pointer'
+                        : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {canFinishExam ? 'Selesai Ujian' : `Selesai (${formatShortTime(finishLockRemaining)})`}
+                  </button>
                 ) : (
                   <button
                     onClick={() => { syncToSupabase(answers, violations); setCurrentIndex(Math.min(questions.length - 1, currentIndex + 1)); }}
@@ -1066,11 +1125,11 @@ function ExamView({ session, onFinish }: any) {
                 let isAns = false;
                 const a = answers[q.id];
                 if (q.question_type === 'complex_multiple_choice') {
-                   isAns = Array.isArray(a) && a.length > 0;
+                  isAns = Array.isArray(a) && a.length > 0;
                 } else if (q.question_type === 'matching') {
-                   isAns = a && Object.keys(a).length > 0 && Object.values(a).some(v => v !== '');
+                  isAns = a && Object.keys(a).length > 0 && Object.values(a).some(v => v !== '');
                 } else {
-                   isAns = !!a && String(a).trim() !== '';
+                  isAns = !!a && String(a).trim() !== '';
                 }
                 const isAct = i === currentIndex;
                 return (
@@ -1137,6 +1196,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
     return 'monitoring';
   });
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -1150,6 +1210,15 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
   const [isSubjectModalOpen, setSubjectModalOpen] = useState(false);
   const [isExamModalOpen, setExamModalOpen] = useState(false);
   const [isQuestionModalOpen, setQuestionModalOpen] = useState(false);
+  const [isScoreModalOpen, setScoreModalOpen] = useState(false);
+
+  const [scoreConfig, setScoreConfig] = useState<Record<QuestionType, number>>({
+    multiple_choice: 0,
+    complex_multiple_choice: 0,
+    matching: 0,
+    short_answer: 0,
+    essay: 0
+  });
 
   const [classForm, setClassForm] = useState({ id: '', name: '' });
   const [studentForm, setStudentForm] = useState({ oldNis: '', nis: '', name: '', classId: '' });
@@ -1170,12 +1239,12 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
 
   const [selectedBankClassId, setSelectedBankClassId] = useState('ALL');
   const visibleSubjects = currentUser.role === 'teacher' ? subjects.filter((s: any) => currentUser.subjectIds.includes(s.id)) : subjects;
-  const filteredBankSubjects = selectedBankClassId === 'ALL' ? visibleSubjects : visibleSubjects.filter((s:any) => s.class_id === selectedBankClassId);
+  const filteredBankSubjects = selectedBankClassId === 'ALL' ? visibleSubjects : visibleSubjects.filter((s: any) => s.class_id === selectedBankClassId);
 
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   // useEffect untuk auto-select mapel Dihapus, agar pengguna melihat daftar kartu Mapel terlebih dahulu
 
-  const visibleExamIds = exams.filter((e:any) => visibleSubjects.some((s:any) => s.id === e.subjectId)).map((e: any) => e.id);
+  const visibleExamIds = exams.filter((e: any) => visibleSubjects.some((s: any) => s.id === e.subjectId)).map((e: any) => e.id);
 
   const [adminAlert, setAdminAlert] = useState<string | null>(null);
   const [adminConfirm, setAdminConfirm] = useState<{ message: string; action: () => Promise<void> | void } | null>(null);
@@ -1184,6 +1253,31 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
   const handleSelectTab = (tab: 'exams' | 'questions' | 'students' | 'classes' | 'teachers' | 'monitoring' | 'rekap') => {
     setActiveTab(tab);
     setMobileMenuOpen(false);
+  };
+
+  // Sisipkan Gambar ke Teks Soal (Opsi 1: Kompresi Otomatis ke Base64)
+  const handleInsertQuestionImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setAdminAlert('Mohon pilih file gambar (JPG, PNG, WEBP, dll).');
+      e.target.value = '';
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const base64Img = await compressImageToBase64(file, 800, 0.75);
+      const imgTag = `<br /><img src="${base64Img}" alt="Gambar Soal" style="max-width: 100%; max-height: 360px; object-fit: contain; border-radius: 12px; margin: 12px 0; border: 1px solid #e2e8f0;" /><br />`;
+      setQuestionForm((prev) => ({
+        ...prev,
+        question_text: prev.question_text ? `${prev.question_text}\n${imgTag}` : imgTag
+      }));
+    } catch (err: any) {
+      setAdminAlert(err?.message || 'Gagal menyisipkan gambar.');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
   };
 
   // Export Excel untuk Data Guru
@@ -1541,7 +1635,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
         weight: 5,
         order_num: questions.filter((q: any) => q.subjectId === selectedSubjectId).length + 1
       };
-      
+
       await supabase.from('questions').insert(payloadData);
       onRefresh();
       setAdminAlert('Isi file Word berhasil diimpor sebagai 1 Soal Esai. Silakan edit jika ingin memecahnya.');
@@ -1615,17 +1709,17 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
     let answerKeyJson = {};
 
     if (questionForm.question_type === 'multiple_choice') {
-        payloadJson = { options: questionForm.options.filter(Boolean) };
-        answerKeyJson = { correct: questionForm.correct };
+      payloadJson = { options: questionForm.options.filter(Boolean) };
+      answerKeyJson = { correct: questionForm.correct };
     } else if (questionForm.question_type === 'complex_multiple_choice') {
-        payloadJson = { options: questionForm.options.filter(Boolean) };
-        answerKeyJson = { correct: questionForm.correctComplex };
+      payloadJson = { options: questionForm.options.filter(Boolean) };
+      answerKeyJson = { correct: questionForm.correctComplex };
     } else if (questionForm.question_type === 'matching') {
-        const validPairs = questionForm.matchingPairs.filter(p => p.prompt.trim() && p.target.trim());
-        payloadJson = { prompts: validPairs.map(p => p.prompt), targets: validPairs.map(p => p.target) };
-        answerKeyJson = { pairs: validPairs };
+      const validPairs = questionForm.matchingPairs.filter(p => p.prompt.trim() && p.target.trim());
+      payloadJson = { prompts: validPairs.map(p => p.prompt), targets: validPairs.map(p => p.target) };
+      answerKeyJson = { pairs: validPairs };
     } else if (questionForm.question_type === 'short_answer') {
-        answerKeyJson = { correct: questionForm.correctShort };
+      answerKeyJson = { correct: questionForm.correctShort };
     }
 
     const dbPayload = {
@@ -1644,6 +1738,77 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
     onRefresh();
     setSaving(false);
     setQuestionModalOpen(false);
+  };
+
+  // Buka Modal Atur Skor Maksimal per Tipe Soal
+  const openScoreModal = () => {
+    const subjectQuestions = questions.filter((q: any) => q.subjectId === selectedSubjectId);
+    const nextConfig: Record<QuestionType, number> = {
+      multiple_choice: 0,
+      complex_multiple_choice: 0,
+      matching: 0,
+      short_answer: 0,
+      essay: 0
+    };
+
+    (Object.keys(nextConfig) as QuestionType[]).forEach((qType) => {
+      const items = subjectQuestions.filter((q: any) => q.question_type === qType);
+      if (items.length > 0) {
+        const sumWeight = items.reduce((acc: number, item: any) => acc + Number(item.weight || 0), 0);
+        nextConfig[qType] = Math.round(sumWeight * 100) / 100;
+      }
+    });
+
+    setScoreConfig(nextConfig);
+    setScoreModalOpen(true);
+  };
+
+  // Simpan Distribusi Skor Maksimal per Tipe Soal ke Kolom weight
+  const saveScoreDistribution = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !selectedSubjectId) return;
+
+    const subjectQuestions = questions.filter((q: any) => q.subjectId === selectedSubjectId);
+    const activeTypes = (Object.keys(scoreConfig) as QuestionType[]).filter(
+      (qType) => subjectQuestions.some((q: any) => q.question_type === qType)
+    );
+
+    const totalTarget = Math.round(
+      activeTypes.reduce((sum, qType) => sum + (Number(scoreConfig[qType]) || 0), 0) * 100
+    ) / 100;
+
+    if (totalTarget !== 100) {
+      setAdminAlert(`Total skor maksimal harus tepat 100 (saat ini: ${totalTarget}).`);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      for (const qType of activeTypes) {
+        const count = subjectQuestions.filter((q: any) => q.question_type === qType).length;
+        if (count > 0) {
+          const perQuestionWeight = Number((Number(scoreConfig[qType]) / count).toFixed(4));
+          const { error } = await supabase
+            .from('questions')
+            .update({ weight: perQuestionWeight })
+            .eq('subject_id', selectedSubjectId)
+            .eq('question_type', qType);
+          if (error) throw error;
+        }
+      }
+      await onRefresh();
+      setScoreModalOpen(false);
+      setAdminAlert('Pengaturan skor maksimal per tipe soal (Total 100) berhasil diterapkan.');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.toLowerCase().includes('integer')) {
+        setAdminAlert('Gagal menyimpan angka desimal karena kolom "weight" di Supabase bertipe integer. Ubah tipe kolom weight menjadi numeric/float8 di Supabase, atau gunakan skor yang habis dibagi jumlah soal.');
+      } else {
+        setAdminAlert(`Gagal menyimpan pengaturan skor: ${msg}`);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const deleteFromSupabase = (tableName: string, setter: any, items: any[], idKey: string, idVal: string) => {
@@ -1743,7 +1908,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
       </aside>
 
       <main className="flex-1 overflow-y-auto p-6 md:p-10 relative">
-        
+
         {/* EXAMS */}
         {activeTab === 'exams' && (
           <div className="max-w-5xl mx-auto animate-in fade-in duration-300">
@@ -1752,7 +1917,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
               <button onClick={() => { setExamForm({ id: '', title: '', subjectId: visibleSubjects[0]?.id || '', token: '', duration: 90, date: '', start_time: '', end_time: '' }); setExamModalOpen(true); }} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md flex items-center"><PlusCircle size={18} className="mr-2" /> Buat Ujian</button>
             </div>
             <div className="grid gap-4">
-              {exams.filter((e:any) => visibleSubjects.some((s:any)=>s.id === e.subjectId)).map((ex: any) => {
+              {exams.filter((e: any) => visibleSubjects.some((s: any) => s.id === e.subjectId)).map((ex: any) => {
                 const sub = subjects.find((s: any) => s.id === ex.subjectId);
                 return (
                   <div key={ex.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex justify-between items-center hover:shadow-md">
@@ -1807,15 +1972,15 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                       <div key={sub.id} onClick={() => setSelectedSubjectId(sub.id)} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between hover:shadow-md hover:border-indigo-300 transition cursor-pointer group">
                         <div>
                           <div className="flex justify-between items-start mb-3">
-                             <span className="text-xs font-bold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg uppercase inline-block">{sub.code}</span>
-                             {currentUser.role === 'admin' && (
-                                <button onClick={(e) => { e.stopPropagation(); setSubjectForm({ id: sub.id, class_id: sub.class_id || '', code: sub.code, name: sub.name, grade: sub.grade_level || '' }); setSubjectModalOpen(true); }} className="p-2 text-slate-400 hover:text-amber-500 bg-slate-50 hover:bg-amber-50 rounded-lg transition"><Edit size={16} /></button>
-                             )}
+                            <span className="text-xs font-bold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg uppercase inline-block">{sub.code}</span>
+                            {currentUser.role === 'admin' && (
+                              <button onClick={(e) => { e.stopPropagation(); setSubjectForm({ id: sub.id, class_id: sub.class_id || '', code: sub.code, name: sub.name, grade: sub.grade_level || '' }); setSubjectModalOpen(true); }} className="p-2 text-slate-400 hover:text-amber-500 bg-slate-50 hover:bg-amber-50 rounded-lg transition"><Edit size={16} /></button>
+                            )}
                           </div>
                           <h3 className="font-extrabold text-xl text-slate-800 group-hover:text-indigo-600 transition">{sub.name}</h3>
                           <div className="mt-4 flex items-center text-sm font-bold text-slate-500">
-                             <LayoutGrid size={16} className="mr-2 text-slate-400" />
-                             {questions.filter((q:any) => q.subjectId === sub.id).length} Butir Soal
+                            <LayoutGrid size={16} className="mr-2 text-slate-400" />
+                            {questions.filter((q: any) => q.subjectId === sub.id).length} Butir Soal
                           </div>
                         </div>
                       </div>
@@ -1830,43 +1995,70 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                     ← Kembali ke Daftar Mapel
                   </button>
                   <div className="font-bold text-slate-700 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
-                    {subjects.find((s:any) => s.id === selectedSubjectId)?.name}
+                    {subjects.find((s: any) => s.id === selectedSubjectId)?.name}
                   </div>
                 </div>
 
                 <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                  <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                    <span className="font-bold text-slate-700">Daftar Soal ({questions.filter((q:any)=>q.subjectId === selectedSubjectId).length})</span>
-                    <div className="flex gap-2">
+                  <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="font-bold text-slate-700">Daftar Soal ({questions.filter((q: any) => q.subjectId === selectedSubjectId).length})</span>
+                      {(() => {
+                        const totalSkorMapel = Math.round(
+                          questions
+                            .filter((q: any) => q.subjectId === selectedSubjectId)
+                            .reduce((acc: number, q: any) => acc + Number(q.weight || 0), 0) * 100
+                        ) / 100;
+                        return (
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${totalSkorMapel === 100 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            Total Skor: {totalSkorMapel} / 100
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={openScoreModal}
+                        disabled={questions.filter((q: any) => q.subjectId === selectedSubjectId).length === 0}
+                        className="text-sm px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg flex items-center transition shadow-sm"
+                      >
+                        <SlidersIcon size={16} className="mr-1.5" /> Atur Skor (100)
+                      </button>
                       <label className="text-sm px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg cursor-pointer flex items-center transition shadow-sm">
                         Import Word (.docx) <input type="file" accept=".docx" className="hidden" onChange={handleImportWordSoal} />
                       </label>
-                      <button onClick={() => { setQuestionForm({ id: '', question_type: 'multiple_choice', question_text: '', options: ['','','','',''], correct: '', correctComplex: [], matchingPairs: [{prompt:'', target:''}], correctShort: '' }); setQuestionModalOpen(true); }} className="text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center transition shadow-sm"><PlusCircle size={16} className="mr-1.5" /> Tambah Soal</button>
+                      <button onClick={() => { setQuestionForm({ id: '', question_type: 'multiple_choice', question_text: '', options: ['', '', '', '', ''], correct: '', correctComplex: [], matchingPairs: [{ prompt: '', target: '' }], correctShort: '' }); setQuestionModalOpen(true); }} className="text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center transition shadow-sm"><PlusCircle size={16} className="mr-1.5" /> Tambah Soal</button>
                     </div>
                   </div>
                   <table className="w-full text-left text-sm text-slate-600">
                     <thead className="bg-white border-b border-slate-100">
-                      <tr><th className="px-6 py-4 font-bold w-12">No</th><th className="px-6 py-4 font-bold">Pertanyaan</th><th className="px-6 py-4 font-bold">Tipe</th><th className="px-6 py-4 font-bold text-center">Aksi</th></tr>
+                      <tr><th className="px-6 py-4 font-bold w-12">No</th><th className="px-6 py-4 font-bold">Pertanyaan</th><th className="px-6 py-4 font-bold">Tipe &amp; Bobot</th><th className="px-6 py-4 font-bold text-center">Aksi</th></tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {questions.filter((q:any)=>q.subjectId === selectedSubjectId).length === 0 ? (
+                      {questions.filter((q: any) => q.subjectId === selectedSubjectId).length === 0 ? (
                         <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 font-medium">Belum ada soal pada mapel ini.</td></tr>
                       ) : (
-                        questions.filter((q:any)=>q.subjectId === selectedSubjectId).map((q: any, idx: number) => (
+                        questions.filter((q: any) => q.subjectId === selectedSubjectId).map((q: any, idx: number) => (
                           <tr key={q.id} className="hover:bg-slate-50 transition">
                             <td className="px-6 py-4 font-semibold">{idx + 1}</td>
                             <td className="px-6 py-4">
                               <div className="line-clamp-2 font-medium text-slate-800" dangerouslySetInnerHTML={{ __html: q.question_text }}></div>
                             </td>
-                            <td className="px-6 py-4"><span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-xs font-bold">{(qTypeLabels as any)[q.question_type]}</span></td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-xs font-bold">{(qTypeLabels as any)[q.question_type]}</span>
+                                <span className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md text-xs font-bold">{Number(Number(q.weight || 0).toFixed(2))} poin</span>
+                              </div>
+                            </td>
                             <td className="px-6 py-4 text-center">
                               <div className="flex gap-1 justify-center">
                                 <button onClick={() => {
                                   const opts = q.payload?.options || [];
-                                  const pairs = q.answer_key?.pairs || [{prompt:'', target:''}];
+                                  const pairs = q.answer_key?.pairs || [{ prompt: '', target: '' }];
                                   setQuestionForm({
                                     id: q.id, question_type: q.question_type, question_text: q.question_text,
-                                    options: [opts[0]||'', opts[1]||'', opts[2]||'', opts[3]||'', opts[4]||''],
+                                    options: [opts[0] || '', opts[1] || '', opts[2] || '', opts[3] || '', opts[4] || ''],
                                     correct: q.answer_key?.correct && typeof q.answer_key.correct === 'string' ? q.answer_key.correct : '',
                                     correctComplex: Array.isArray(q.answer_key?.correct) ? q.answer_key.correct : [],
                                     matchingPairs: pairs,
@@ -1913,7 +2105,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                   <tr><th className="px-6 py-4 font-bold">NIS</th><th className="px-6 py-4 font-bold">Nama Lengkap</th><th className="px-6 py-4 font-bold">Kelas</th><th className="px-6 py-4 font-bold text-center">Aksi</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {students.filter((s:any) => selectedBankClassId === 'ALL' || s.classId === selectedBankClassId).map((s: any) => (
+                  {students.filter((s: any) => selectedBankClassId === 'ALL' || s.classId === selectedBankClassId).map((s: any) => (
                     <tr key={s.nis} className="hover:bg-slate-50">
                       <td className="px-6 py-4 font-mono font-bold text-slate-800">{s.nis}</td>
                       <td className="px-6 py-4 font-bold text-slate-800">{s.name}</td>
@@ -1931,7 +2123,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
           </div>
         )}
 
-        {/* OTHER TABS (Classes, Teachers, Monitoring, Rekap - Simplified for brevity but intact logic) */}
+        {/* OTHER TABS (Classes, Teachers, Monitoring, Rekap) */}
         {activeTab === 'classes' && currentUser.role === 'admin' && (
           <div className="max-w-4xl mx-auto animate-in fade-in duration-300">
             <div className="flex justify-between items-end mb-6">
@@ -1997,7 +2189,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
               <table className="w-full text-left text-sm text-slate-600">
                 <thead className="bg-slate-50 border-b border-slate-200"><tr><th className="px-6 py-4 font-bold">Peserta</th><th className="px-6 py-4 font-bold text-center">Status</th><th className="px-6 py-4 font-bold text-center">Nilai PG</th><th className="px-6 py-4 font-bold text-center">Aksi</th></tr></thead>
                 <tbody className="divide-y divide-slate-100">
-                  {examSessions.filter((s:any) => visibleExamIds.includes(s.examId)).map((sess: any) => (
+                  {examSessions.filter((s: any) => visibleExamIds.includes(s.examId)).map((sess: any) => (
                     <tr key={sess.id} className="hover:bg-slate-50">
                       <td className="px-6 py-4"><div className="font-bold text-slate-800">{sess.name}</div><div className="text-xs text-slate-500">{sess.nis}</div></td>
                       <td className="px-6 py-4 text-center"><span className={`px-3 py-1 rounded-lg font-bold text-xs uppercase ${sess.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{sess.status}</span></td>
@@ -2019,7 +2211,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
               <h2 className="text-3xl font-extrabold text-slate-800">Rekap Hasil Ujian</h2>
               <button onClick={() => {
                 const headers = 'NIS,Nama Siswa,Kelas,Ujian,Nilai\n';
-                const rows = examSessions.filter((s:any) => s.status === 'completed' && visibleExamIds.includes(s.examId)).map((s:any) => `${s.nis},"${s.name}","${s.className}","${exams.find((e:any)=>e.id === s.examId)?.title || '-'}",${s.score}`).join('\n');
+                const rows = examSessions.filter((s: any) => s.status === 'completed' && visibleExamIds.includes(s.examId)).map((s: any) => `${s.nis},"${s.name}","${s.className}","${exams.find((e: any) => e.id === s.examId)?.title || '-'}",${s.score}`).join('\n');
                 const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'rekap_nilai.csv'; link.click();
               }} className="px-5 py-2.5 bg-emerald-600 text-white font-bold rounded-xl shadow-md flex"><Download size={18} className="mr-2" /> Unduh CSV</button>
@@ -2027,7 +2219,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
           </div>
         )}
 
-        {/* MODAL TAMBAH / EDIT SOAL (DENGAN 5 TIPE SOAL) */}
+        {/* MODAL TAMBAH / EDIT SOAL (DENGAN 5 TIPE SOAL + SISIPKAN GAMBAR) */}
         <Modal title={`${questionForm.id ? 'Edit' : 'Tambah'} Soal`} isOpen={isQuestionModalOpen} onClose={() => setQuestionModalOpen(false)}>
           <form onSubmit={saveQuestion} className="space-y-4">
             <div>
@@ -2042,8 +2234,21 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Pertanyaan / Teks Soal</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Pertanyaan / Teks Soal</label>
+                <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${uploadingImage ? 'bg-slate-200 text-slate-500 cursor-wait' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}>
+                  <ImageIcon size={14} />
+                  <span>{uploadingImage ? 'Memproses...' : 'Sisipkan Gambar'}</span>
+                  <input type="file" accept="image/*" className="hidden" disabled={uploadingImage} onChange={handleInsertQuestionImage} />
+                </label>
+              </div>
               <textarea required rows={4} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={questionForm.question_text} onChange={(e) => setQuestionForm({ ...questionForm, question_text: e.target.value })} placeholder="Mendukung format HTML atau teks biasa..." />
+              {questionForm.question_text.trim() !== '' && (
+                <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Pratinjau Soal</p>
+                  <div className="prose prose-sm max-w-none text-slate-800 break-words" dangerouslySetInnerHTML={{ __html: questionForm.question_text }} />
+                </div>
+              )}
             </div>
 
             {questionForm.question_type === 'multiple_choice' && (
@@ -2091,17 +2296,17 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
               <div className="space-y-2.5">
                 <label className="block text-xs font-bold text-slate-700 flex justify-between items-center">
                   Pasangan (Kiri & Kanan)
-                  <button type="button" onClick={() => setQuestionForm({...questionForm, matchingPairs: [...questionForm.matchingPairs, {prompt:'', target:''}]})} className="text-indigo-600 text-xs">+ Tambah Baris</button>
+                  <button type="button" onClick={() => setQuestionForm({ ...questionForm, matchingPairs: [...questionForm.matchingPairs, { prompt: '', target: '' }] })} className="text-indigo-600 text-xs">+ Tambah Baris</button>
                 </label>
                 {questionForm.matchingPairs.map((pair, idx) => (
                   <div key={idx} className="flex gap-2">
                     <input required className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none" value={pair.prompt} onChange={(e) => {
-                      const newPairs = [...questionForm.matchingPairs]; newPairs[idx].prompt = e.target.value; setQuestionForm({...questionForm, matchingPairs: newPairs});
+                      const newPairs = [...questionForm.matchingPairs]; newPairs[idx].prompt = e.target.value; setQuestionForm({ ...questionForm, matchingPairs: newPairs });
                     }} placeholder="Pernyataan (Kiri)" />
                     <input required className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none" value={pair.target} onChange={(e) => {
-                      const newPairs = [...questionForm.matchingPairs]; newPairs[idx].target = e.target.value; setQuestionForm({...questionForm, matchingPairs: newPairs});
+                      const newPairs = [...questionForm.matchingPairs]; newPairs[idx].target = e.target.value; setQuestionForm({ ...questionForm, matchingPairs: newPairs });
                     }} placeholder="Jawaban (Kanan)" />
-                    <button type="button" onClick={() => setQuestionForm({...questionForm, matchingPairs: questionForm.matchingPairs.filter((_, i) => i !== idx)})} className="text-red-500 px-2"><Trash2 size={16} /></button>
+                    <button type="button" onClick={() => setQuestionForm({ ...questionForm, matchingPairs: questionForm.matchingPairs.filter((_, i) => i !== idx) })} className="text-red-500 px-2"><Trash2 size={16} /></button>
                   </div>
                 ))}
               </div>
@@ -2114,10 +2319,100 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
               </div>
             )}
 
-            <button type="submit" disabled={saving} className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-60 mt-4">
+            <button type="submit" disabled={saving || uploadingImage} className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-60 mt-4">
               {saving ? 'Menyimpan...' : 'Simpan Soal'}
             </button>
           </form>
+        </Modal>
+
+        {/* MODAL ATUR SKOR MAKSIMAL PER TIPE SOAL (OPSI 1) */}
+        <Modal title="Atur Skor Maksimal per Tipe Soal" isOpen={isScoreModalOpen} onClose={() => setScoreModalOpen(false)}>
+          {(() => {
+            const subjectQuestions = questions.filter((q: any) => q.subjectId === selectedSubjectId);
+            const activeTypes = (Object.keys(qTypeLabels) as QuestionType[]).filter(
+              (qType) => subjectQuestions.some((q: any) => q.question_type === qType)
+            );
+            const totalTarget = Math.round(
+              activeTypes.reduce((sum, qType) => sum + (Number(scoreConfig[qType]) || 0), 0) * 100
+            ) / 100;
+
+            return (
+              <form onSubmit={saveScoreDistribution} className="space-y-4">
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  Tentukan skor maksimal untuk masing-masing tipe soal. Poin per butir soal akan dibagi otomatis agar total skor akhir tepat <strong>100</strong>.
+                </p>
+
+                <div className="space-y-3">
+                  {(Object.keys(qTypeLabels) as QuestionType[]).map((qType) => {
+                    const count = subjectQuestions.filter((q: any) => q.question_type === qType).length;
+                    const targetVal = count > 0 ? scoreConfig[qType] : 0;
+                    const perSoal = count > 0 ? (Number(targetVal || 0) / count).toFixed(2) : '0';
+
+                    return (
+                      <div key={qType} className={`p-3.5 rounded-2xl border ${count > 0 ? 'bg-slate-50 border-slate-200' : 'bg-slate-50/40 border-slate-100 opacity-50'}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="font-bold text-sm text-slate-800">{qTypeLabels[qType]}</div>
+                            <div className="text-xs text-slate-500 font-medium">
+                              {count} soal {count > 0 ? `• ${perSoal} poin/soal` : '(belum ada soal)'}
+                            </div>
+                          </div>
+                          <div className="w-28">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step="any"
+                              disabled={count === 0}
+                              value={count === 0 ? 0 : scoreConfig[qType]}
+                              onChange={(e) =>
+                                setScoreConfig((prev) => ({
+                                  ...prev,
+                                  [qType]: e.target.value === '' ? 0 : Number(e.target.value)
+                                }))
+                              }
+                              className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-right font-bold text-slate-800 outline-none focus:border-indigo-500 disabled:bg-slate-100"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className={`p-4 rounded-2xl flex items-center justify-between font-extrabold text-sm border ${totalTarget === 100 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                  <span>Total Skor Maksimal</span>
+                  <span className="text-base">{totalTarget} / 100</span>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeTypes.length === 0) return;
+                      const base = Math.floor(100 / activeTypes.length);
+                      const remainder = 100 - base * activeTypes.length;
+                      const next = { ...scoreConfig };
+                      activeTypes.forEach((t, idx) => {
+                        next[t] = idx === 0 ? base + remainder : base;
+                      });
+                      setScoreConfig(next);
+                    }}
+                    className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition"
+                  >
+                    Bagi Rata
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving || totalTarget !== 100}
+                    className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl disabled:opacity-50 transition"
+                  >
+                    {saving ? 'Menyimpan...' : 'Terapkan Skor'}
+                  </button>
+                </div>
+              </form>
+            );
+          })()}
         </Modal>
 
         {/* REUSABLE MODALS FOR OTHERS */}
@@ -2136,59 +2431,59 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
 
         {/* MODAL KELAS, GURU, MAPEL DLL */}
         <Modal title="Form Kelas" isOpen={isClassModalOpen} onClose={() => setClassModalOpen(false)}>
-           <form onSubmit={saveClass}><input required className="w-full p-3 border rounded-xl mb-4" value={classForm.name} onChange={e => setClassForm({ ...classForm, name: e.target.value })} placeholder="Nama Kelas" /><button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan</button></form>
+          <form onSubmit={saveClass}><input required className="w-full p-3 border rounded-xl mb-4" value={classForm.name} onChange={e => setClassForm({ ...classForm, name: e.target.value })} placeholder="Nama Kelas" /><button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan</button></form>
         </Modal>
-        
+
         <Modal title="Form Mapel" isOpen={isSubjectModalOpen} onClose={() => setSubjectModalOpen(false)}>
-           <form onSubmit={saveSubject}>
-             <select className="w-full p-3 border rounded-xl mb-4" value={subjectForm.class_id} onChange={e=>setSubjectForm({...subjectForm, class_id: e.target.value})}><option value="">-- Pilih Kelas Terkait (Opsional) --</option>{classes.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
-             <input required className="w-full p-3 border rounded-xl mb-4" value={subjectForm.code} onChange={e => setSubjectForm({ ...subjectForm, code: e.target.value })} placeholder="Kode" />
-             <input required className="w-full p-3 border rounded-xl mb-4" value={subjectForm.name} onChange={e => setSubjectForm({ ...subjectForm, name: e.target.value })} placeholder="Nama Mapel" />
-             <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan</button>
-           </form>
+          <form onSubmit={saveSubject}>
+            <select className="w-full p-3 border rounded-xl mb-4" value={subjectForm.class_id} onChange={e => setSubjectForm({ ...subjectForm, class_id: e.target.value })}><option value="">-- Pilih Kelas Terkait (Opsional) --</option>{classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            <input required className="w-full p-3 border rounded-xl mb-4" value={subjectForm.code} onChange={e => setSubjectForm({ ...subjectForm, code: e.target.value })} placeholder="Kode" />
+            <input required className="w-full p-3 border rounded-xl mb-4" value={subjectForm.name} onChange={e => setSubjectForm({ ...subjectForm, name: e.target.value })} placeholder="Nama Mapel" />
+            <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan</button>
+          </form>
         </Modal>
-        
+
         <Modal title="Form Jadwal" isOpen={isExamModalOpen} onClose={() => setExamModalOpen(false)}>
-           <form onSubmit={saveExam} className="space-y-4">
-             <select required className="w-full p-3 border rounded-xl" value={examForm.subjectId} onChange={e => setExamForm({ ...examForm, subjectId: e.target.value })}><option value="">-- Pilih Mapel --</option>{visibleSubjects.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-             <input required className="w-full p-3 border rounded-xl" value={examForm.title} onChange={e => setExamForm({ ...examForm, title: e.target.value })} placeholder="Judul Ujian" />
-             <input required type="date" className="w-full p-3 border rounded-xl" value={examForm.date} onChange={e => setExamForm({ ...examForm, date: e.target.value })} />
-             <div className="flex gap-2">
-               <input required type="time" className="w-full p-3 border rounded-xl" value={examForm.start_time} onChange={e => setExamForm({ ...examForm, start_time: e.target.value })} />
-               <input required type="time" className="w-full p-3 border rounded-xl" value={examForm.end_time} onChange={e => setExamForm({ ...examForm, end_time: e.target.value })} />
-             </div>
-             <div className="flex gap-2">
-               <input required maxLength={6} className="w-full p-3 border rounded-xl font-mono uppercase" value={examForm.token} onChange={e => setExamForm({ ...examForm, token: e.target.value.toUpperCase() })} placeholder="TOKEN" />
-               <input required type="number" min={1} className="w-full p-3 border rounded-xl" value={examForm.duration} onChange={e => setExamForm({ ...examForm, duration: Number(e.target.value) })} placeholder="Durasi (Menit)" />
-             </div>
-             <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan Jadwal</button>
-           </form>
+          <form onSubmit={saveExam} className="space-y-4">
+            <select required className="w-full p-3 border rounded-xl" value={examForm.subjectId} onChange={e => setExamForm({ ...examForm, subjectId: e.target.value })}><option value="">-- Pilih Mapel --</option>{visibleSubjects.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+            <input required className="w-full p-3 border rounded-xl" value={examForm.title} onChange={e => setExamForm({ ...examForm, title: e.target.value })} placeholder="Judul Ujian" />
+            <input required type="date" className="w-full p-3 border rounded-xl" value={examForm.date} onChange={e => setExamForm({ ...examForm, date: e.target.value })} />
+            <div className="flex gap-2">
+              <input required type="time" className="w-full p-3 border rounded-xl" value={examForm.start_time} onChange={e => setExamForm({ ...examForm, start_time: e.target.value })} />
+              <input required type="time" className="w-full p-3 border rounded-xl" value={examForm.end_time} onChange={e => setExamForm({ ...examForm, end_time: e.target.value })} />
+            </div>
+            <div className="flex gap-2">
+              <input required maxLength={6} className="w-full p-3 border rounded-xl font-mono uppercase" value={examForm.token} onChange={e => setExamForm({ ...examForm, token: e.target.value.toUpperCase() })} placeholder="TOKEN" />
+              <input required type="number" min={1} className="w-full p-3 border rounded-xl" value={examForm.duration} onChange={e => setExamForm({ ...examForm, duration: Number(e.target.value) })} placeholder="Durasi (Menit)" />
+            </div>
+            <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan Jadwal</button>
+          </form>
         </Modal>
-        
+
         <Modal title="Form Siswa" isOpen={isStudentModalOpen} onClose={() => setStudentModalOpen(false)}>
-           <form onSubmit={saveStudent} className="space-y-4">
-             <input required className="w-full p-3 border rounded-xl" value={studentForm.nis} onChange={e => setStudentForm({ ...studentForm, nis: e.target.value })} placeholder="NIS" />
-             <input required className="w-full p-3 border rounded-xl" value={studentForm.name} onChange={e => setStudentForm({ ...studentForm, name: e.target.value })} placeholder="Nama Lengkap" />
-             <select required className="w-full p-3 border rounded-xl" value={studentForm.classId} onChange={e => setStudentForm({ ...studentForm, classId: e.target.value })}><option value="">-- Pilih Kelas --</option>{classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-             <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan Siswa</button>
-           </form>
+          <form onSubmit={saveStudent} className="space-y-4">
+            <input required className="w-full p-3 border rounded-xl" value={studentForm.nis} onChange={e => setStudentForm({ ...studentForm, nis: e.target.value })} placeholder="NIS" />
+            <input required className="w-full p-3 border rounded-xl" value={studentForm.name} onChange={e => setStudentForm({ ...studentForm, name: e.target.value })} placeholder="Nama Lengkap" />
+            <select required className="w-full p-3 border rounded-xl" value={studentForm.classId} onChange={e => setStudentForm({ ...studentForm, classId: e.target.value })}><option value="">-- Pilih Kelas --</option>{classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan Siswa</button>
+          </form>
         </Modal>
-        
+
         <Modal title="Form Guru" isOpen={isTeacherModalOpen} onClose={() => setTeacherModalOpen(false)}>
-           <form onSubmit={saveTeacher} className="space-y-4">
-             <input required className="w-full p-3 border rounded-xl" value={teacherForm.name} onChange={e => setTeacherForm({ ...teacherForm, name: e.target.value })} placeholder="Nama Lengkap" />
-             <input required className="w-full p-3 border rounded-xl" value={teacherForm.username} onChange={e => setTeacherForm({ ...teacherForm, username: e.target.value })} placeholder="Username" />
-             <input required className="w-full p-3 border rounded-xl" value={teacherForm.password} onChange={e => setTeacherForm({ ...teacherForm, password: e.target.value })} placeholder="Password" />
-             <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
-                {subjects.map((s: any) => (
-                  <label key={s.id} className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" checked={teacherForm.subjectIds.includes(s.id)} onChange={(e) => setTeacherForm({ ...teacherForm, subjectIds: e.target.checked ? [...teacherForm.subjectIds, s.id] : teacherForm.subjectIds.filter((id) => id !== s.id) })} className="w-4 h-4 text-indigo-600" />
-                    <span className="text-sm font-semibold">{s.name}</span>
-                  </label>
-                ))}
-             </div>
-             <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan Guru</button>
-           </form>
+          <form onSubmit={saveTeacher} className="space-y-4">
+            <input required className="w-full p-3 border rounded-xl" value={teacherForm.name} onChange={e => setTeacherForm({ ...teacherForm, name: e.target.value })} placeholder="Nama Lengkap" />
+            <input required className="w-full p-3 border rounded-xl" value={teacherForm.username} onChange={e => setTeacherForm({ ...teacherForm, username: e.target.value })} placeholder="Username" />
+            <input required className="w-full p-3 border rounded-xl" value={teacherForm.password} onChange={e => setTeacherForm({ ...teacherForm, password: e.target.value })} placeholder="Password" />
+            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+              {subjects.map((s: any) => (
+                <label key={s.id} className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={teacherForm.subjectIds.includes(s.id)} onChange={(e) => setTeacherForm({ ...teacherForm, subjectIds: e.target.checked ? [...teacherForm.subjectIds, s.id] : teacherForm.subjectIds.filter((id) => id !== s.id) })} className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-semibold">{s.name}</span>
+                </label>
+              ))}
+            </div>
+            <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl">Simpan Guru</button>
+          </form>
         </Modal>
 
       </main>
