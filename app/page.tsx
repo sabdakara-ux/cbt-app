@@ -1573,16 +1573,16 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
       }
     }
 
-    const allEssaysInputted = essayQuestions.every((eq) => cleanEssayScores[eq.id] !== undefined);
+    const allEssaysInputted = essayQuestions.every((eq: QuestionItem) => cleanEssayScores[eq.id] !== undefined);
 
     let totalWeight = 0;
     let earnedWeight = 0;
-    pgQuestions.forEach((q) => {
+    pgQuestions.forEach((q: QuestionItem) => {
       const w = Number(q.weight) || 1;
       totalWeight += w;
       if (gradingSession.answers?.[q.id] === q.answer_key?.correct) earnedWeight += w;
     });
-    essayQuestions.forEach((q) => {
+    essayQuestions.forEach((q: QuestionItem) => {
       const w = Number(q.weight) || 5;
       totalWeight += w;
       const sVal = cleanEssayScores[q.id] ?? 0;
@@ -3180,7 +3180,10 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                                   key={preset}
                                   type="button"
                                   onClick={() =>
-                                    setEssayScoreInputs((prev) => ({ ...prev, [eq.id]: String(preset) }))
+                                    setEssayScoreInputs((prev: Record<string, string>) => ({
+                                      ...prev,
+                                      [eq.id]: String(preset)
+                                    }))
                                   }
                                   className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition ${
                                     currentVal === String(preset)
@@ -3204,7 +3207,10 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                                 className="w-24 px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl font-extrabold text-center text-slate-800 focus:border-emerald-500 outline-none"
                                 value={currentVal}
                                 onChange={(e) =>
-                                  setEssayScoreInputs((prev) => ({ ...prev, [eq.id]: e.target.value }))
+                                  setEssayScoreInputs((prev: Record<string, string>) => ({
+                                    ...prev,
+                                    [eq.id]: e.target.value
+                                  }))
                                 }
                               />
                             </div>
