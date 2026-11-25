@@ -162,6 +162,33 @@ const compressImageToBase64 = (file: File, maxWidth = 800, quality = 0.75): Prom
   });
 };
 
+// Pisahkan tag <img> dari teks soal agar kode Base64 tidak muncul di textarea
+const extractImagesFromHtml = (html: string): { cleanText: string; images: string[] } => {
+  const images: string[] = [];
+  if (!html) return { cleanText: '', images };
+  const imgRegex = /(?:<br\s*\/?>\s*)*<img[^>]+src=["']([^"']+)["'][^>]*>(?:\s*<br\s*\/?>)*/gi;
+  const cleanText = html
+    .replace(imgRegex, (_match, src) => {
+      if (src) images.push(src);
+      return '';
+    })
+    .trim();
+  return { cleanText, images };
+};
+
+// Gabungkan teks soal + lampiran gambar kembali menjadi HTML saat disimpan ke database
+const buildQuestionHtml = (text: string, images: string[]): string => {
+  const trimmedText = text.trim();
+  if (!images || images.length === 0) return trimmedText;
+  const imgsHtml = images
+    .map(
+      (src) =>
+        `<br /><img src="${src}" alt="Gambar Soal" style="max-width: 100%; max-height: 360px; object-fit: contain; border-radius: 12px; margin: 12px 0; border: 1px solid #e2e8f0;" />`
+    )
+    .join('');
+  return trimmedText ? `${trimmedText}${imgsHtml}` : imgsHtml.replace(/^<br \/>/, '');
+};
+
 // ==========================================
 // 3. MAIN APP COMPONENT
 // ==========================================
@@ -637,70 +664,82 @@ function LoginView({ exams, subjects, students, teachers, onStudentLogin, onAdmi
             <div className="absolute -top-12 -left-12 w-48 h-48 border-[20px] border-white/5 rounded-full"></div>
           </div>
 
-          <div className="w-full md:w-1/2 p-8 md:p-12">
-            <div className="text-center md:text-left mb-8">
-              <h2 className="text-2xl font-extrabold text-slate-800">Selamat Datang</h2>
-              <p className="text-slate-500 font-medium">Silakan masuk ke akun Anda</p>
+          <div className="w-full md:w-1/2 p-8 md:p-12 relative overflow-hidden">
+            {/* Background Logo Watermark di belakang kolom login */}
+            <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center pt-16 z-0">
+              <img
+                src="/logo-sekolah.png"
+                alt=""
+                aria-hidden="true"
+                className="w-64 h-64 md:w-72 md:h-72 object-contain opacity-[0.09]"
+              />
             </div>
 
-            <div className="flex p-1 bg-slate-100 rounded-xl mb-8">
-              <button onClick={() => setLoginType('student')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginType === 'student' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Siswa</button>
-              <button onClick={() => setLoginType('teacher')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginType === 'teacher' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Guru</button>
-              <button onClick={() => setLoginType('admin')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginType === 'admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Admin</button>
-            </div>
-
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm font-semibold rounded-xl border border-red-100 flex items-start">
-                <XCircle className="shrink-0 mr-2" size={18} />
-                <span>{error}</span>
+            <div className="relative z-10">
+              <div className="text-center md:text-left mb-8">
+                <h2 className="text-2xl font-extrabold text-slate-800">Selamat Datang</h2>
+                <p className="text-slate-500 font-medium">Silakan masuk ke akun Anda</p>
               </div>
-            )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {loginType === 'student' ? (
-                <>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">NIS / No Peserta</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><UserIcon size={18} className="text-slate-400" /></div>
-                      <input required type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={nis} onChange={e => setNis(e.target.value)} placeholder="Masukkan NIS" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Nama Lengkap</label>
-                    <input required type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={name} onChange={e => setName(e.target.value)} placeholder="Nama Siswa" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Token Ujian</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><LockIcon size={18} className="text-slate-400" /></div>
-                      <input required type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-mono font-bold tracking-widest text-lg uppercase" maxLength={6} value={token} onChange={e => setToken(e.target.value.toUpperCase())} placeholder="XXXXXX" />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Username {loginType === 'admin' ? 'Admin' : 'Guru'}</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><UserIcon size={18} className="text-slate-400" /></div>
-                      <input required type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={username} onChange={e => setUsername(e.target.value)} placeholder={loginType === 'admin' ? "Username admin" : "Username guru"} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Password</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><LockIcon size={18} className="text-slate-400" /></div>
-                      <input required type="password" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
-                    </div>
-                  </div>
-                </>
+              <div className="flex p-1 bg-slate-100/90 rounded-xl mb-8">
+                <button onClick={() => setLoginType('student')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginType === 'student' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Siswa</button>
+                <button onClick={() => setLoginType('teacher')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginType === 'teacher' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Guru</button>
+                <button onClick={() => setLoginType('admin')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginType === 'admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Admin</button>
+              </div>
+
+              {error && (
+                <div className="mb-6 p-4 bg-red-50/95 text-red-600 text-sm font-semibold rounded-xl border border-red-100 flex items-start">
+                  <XCircle className="shrink-0 mr-2" size={18} />
+                  <span>{error}</span>
+                </div>
               )}
 
-              <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold py-3.5 rounded-xl hover:from-indigo-700 hover:to-blue-700 shadow-md transition-all mt-4 disabled:opacity-70">
-                {loading ? 'Memproses...' : (loginType === 'student' ? 'Mulai Ujian' : 'Masuk Dashboard')}
-              </button>
-            </form>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {loginType === 'student' ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">NIS / No Peserta</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><UserIcon size={18} className="text-slate-400" /></div>
+                        <input required type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={nis} onChange={e => setNis(e.target.value)} placeholder="Masukkan NIS" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Nama Lengkap</label>
+                      <input required type="text" className="w-full px-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={name} onChange={e => setName(e.target.value)} placeholder="Nama Siswa" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Token Ujian</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><LockIcon size={18} className="text-slate-400" /></div>
+                        <input required type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-mono font-bold tracking-widest text-lg uppercase" maxLength={6} value={token} onChange={e => setToken(e.target.value.toUpperCase())} placeholder="XXXXXX" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Username {loginType === 'admin' ? 'Admin' : 'Guru'}</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><UserIcon size={18} className="text-slate-400" /></div>
+                        <input required type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={username} onChange={e => setUsername(e.target.value)} placeholder={loginType === 'admin' ? "Username admin" : "Username guru"} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Password</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><LockIcon size={18} className="text-slate-400" /></div>
+                        <input required type="password" className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-medium" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold py-3.5 rounded-xl hover:from-indigo-700 hover:to-blue-700 shadow-md transition-all mt-4 disabled:opacity-70">
+                  {loading ? 'Memproses...' : (loginType === 'student' ? 'Mulai Ujian' : 'Masuk Dashboard')}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>
@@ -1230,6 +1269,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
     id: '',
     question_type: 'multiple_choice' as QuestionType,
     question_text: '',
+    question_images: [] as string[],
     options: ['', '', '', '', ''],
     correct: '',
     correctComplex: [] as string[],
@@ -1256,6 +1296,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
   };
 
   // Sisipkan Gambar ke Teks Soal (Opsi 1: Kompresi Otomatis ke Base64)
+  // Sisipkan Gambar ke Teks Soal (Opsi 1: Kompresi Otomatis ke Base64, tersimpan terpisah dari textarea)
   const handleInsertQuestionImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1267,10 +1308,9 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
     setUploadingImage(true);
     try {
       const base64Img = await compressImageToBase64(file, 800, 0.75);
-      const imgTag = `<br /><img src="${base64Img}" alt="Gambar Soal" style="max-width: 100%; max-height: 360px; object-fit: contain; border-radius: 12px; margin: 12px 0; border: 1px solid #e2e8f0;" /><br />`;
       setQuestionForm((prev) => ({
         ...prev,
-        question_text: prev.question_text ? `${prev.question_text}\n${imgTag}` : imgTag
+        question_images: [...prev.question_images, base64Img]
       }));
     } catch (err: any) {
       setAdminAlert(err?.message || 'Gagal menyisipkan gambar.');
@@ -1725,7 +1765,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
     const dbPayload = {
       subject_id: selectedSubjectId,
       question_type: questionForm.question_type,
-      question_text: questionForm.question_text,
+      question_text: buildQuestionHtml(questionForm.question_text, questionForm.question_images),
       payload: payloadJson,
       answer_key: answerKeyJson,
       weight: questionForm.question_type === 'essay' ? 5 : 1,
@@ -2028,7 +2068,7 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                       <label className="text-sm px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg cursor-pointer flex items-center transition shadow-sm">
                         Import Word (.docx) <input type="file" accept=".docx" className="hidden" onChange={handleImportWordSoal} />
                       </label>
-                      <button onClick={() => { setQuestionForm({ id: '', question_type: 'multiple_choice', question_text: '', options: ['', '', '', '', ''], correct: '', correctComplex: [], matchingPairs: [{ prompt: '', target: '' }], correctShort: '' }); setQuestionModalOpen(true); }} className="text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center transition shadow-sm"><PlusCircle size={16} className="mr-1.5" /> Tambah Soal</button>
+                      <button onClick={() => { setQuestionForm({ id: '', question_type: 'multiple_choice', question_text: '', question_images: [], options: ['', '', '', '', ''], correct: '', correctComplex: [], matchingPairs: [{ prompt: '', target: '' }], correctShort: '' }); setQuestionModalOpen(true); }} className="text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center transition shadow-sm"><PlusCircle size={16} className="mr-1.5" /> Tambah Soal</button>
                     </div>
                   </div>
                   <table className="w-full text-left text-sm text-slate-600">
@@ -2056,8 +2096,10 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                                 <button onClick={() => {
                                   const opts = q.payload?.options || [];
                                   const pairs = q.answer_key?.pairs || [{ prompt: '', target: '' }];
+                                  const { cleanText, images } = extractImagesFromHtml(q.question_text || '');
                                   setQuestionForm({
-                                    id: q.id, question_type: q.question_type, question_text: q.question_text,
+                                    id: q.id, question_type: q.question_type, question_text: cleanText,
+                                    question_images: images,
                                     options: [opts[0] || '', opts[1] || '', opts[2] || '', opts[3] || '', opts[4] || ''],
                                     correct: q.answer_key?.correct && typeof q.answer_key.correct === 'string' ? q.answer_key.correct : '',
                                     correctComplex: Array.isArray(q.answer_key?.correct) ? q.answer_key.correct : [],
@@ -2242,11 +2284,37 @@ function AdminDashboard({ currentUser, teachers, setTeachers, classes, setClasse
                   <input type="file" accept="image/*" className="hidden" disabled={uploadingImage} onChange={handleInsertQuestionImage} />
                 </label>
               </div>
-              <textarea required rows={4} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={questionForm.question_text} onChange={(e) => setQuestionForm({ ...questionForm, question_text: e.target.value })} placeholder="Mendukung format HTML atau teks biasa..." />
-              {questionForm.question_text.trim() !== '' && (
-                <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Pratinjau Soal</p>
-                  <div className="prose prose-sm max-w-none text-slate-800 break-words" dangerouslySetInnerHTML={{ __html: questionForm.question_text }} />
+              <textarea required={questionForm.question_images.length === 0} rows={4} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" value={questionForm.question_text} onChange={(e) => setQuestionForm({ ...questionForm, question_text: e.target.value })} placeholder="Ketik teks pertanyaan di sini..." />
+
+              {questionForm.question_images.length > 0 && (
+                <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Gambar Terlampir ({questionForm.question_images.length})
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {questionForm.question_images.map((imgSrc, imgIdx) => (
+                      <div key={imgIdx} className="relative group bg-white border border-slate-200 rounded-xl p-2 flex items-center justify-center">
+                        <img
+                          src={imgSrc}
+                          alt={`Lampiran ${imgIdx + 1}`}
+                          className="max-h-40 w-full object-contain rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setQuestionForm((prev) => ({
+                              ...prev,
+                              question_images: prev.question_images.filter((_, i) => i !== imgIdx)
+                            }))
+                          }
+                          title="Hapus gambar ini"
+                          className="absolute top-2 right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md transition"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
